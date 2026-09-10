@@ -29,6 +29,9 @@ implementación.
 
 - **Estudiante** — consulta su perfil, sus calificaciones, sus documentos y sus solicitudes.
 - **Profesor** — consulta los grupos que tiene asignados y captura calificaciones de esos grupos.
+- **Jefe de carrera** — da de alta los grupos y define, para cada uno, qué profesor lo imparte y en
+  qué horario. Tiene perfil propio. *(Rol agregado por el equipo, no incluido en el escenario
+  original del manual.)*
 - **Administrador** — administra usuarios, roles y permisos, y consulta logs. Algunas operaciones
   académicas requieren autorización específica adicional.
 

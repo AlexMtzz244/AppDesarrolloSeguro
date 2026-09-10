@@ -33,12 +33,23 @@ Roles considerados:
 |---|---|
 | **Estudiante** | Consulta *su* perfil, *sus* calificaciones, *sus* documentos y *sus* solicitudes. |
 | **Profesor** | Consulta los grupos que le fueron asignados y captura calificaciones **de esos grupos**. |
+| **Jefe de carrera** | Da de alta los grupos y define, para cada uno, **qué profesor lo imparte y en qué horario**. Tiene perfil propio. |
 | **Administrador** | Administra usuarios, roles y permisos, y consulta logs. Algunas operaciones académicas requieren autorización específica adicional. |
 
-Observación que atraviesa todo el análisis: en los tres roles el alcance no está definido por el
+> **Nota sobre el alcance.** El rol de **jefe de carrera** es una extensión que el equipo agregó al
+> escenario original del manual, que contemplaba únicamente estudiante, profesor y administrador.
+> No es un rol decorativo: como es quien establece la relación profesor↔grupo, su módulo se
+> convierte en la **fuente de verdad de la que depende la autorización de calificaciones**, y por
+> eso se analiza como un escenario propio (§ 4, escenario 5).
+
+Observación que atraviesa todo el análisis: en los cuatro roles el alcance no está definido por el
 rol solamente, sino por la **relación entre el usuario y el recurso concreto** (mi perfil, mi grupo,
 mi documento). Un sistema que verifique únicamente el rol y no esa relación quedará expuesto,
 aunque la autenticación funcione perfectamente.
+
+Esa observación tiene una consecuencia que el jefe de carrera hace explícita: si la autorización
+depende de una relación almacenada, entonces **el registro que guarda esa relación es también un
+activo a proteger**. Un control de acceso solo es tan confiable como el dato en el que se apoya.
 
 ---
 
@@ -98,6 +109,13 @@ integridad y no solo la confidencialidad. Los controles detectivos existen porqu
 la amenaza puede provenir de un usuario **legítimamente autorizado** sobre ese grupo: contra ese
 caso la prevención no alcanza y lo que queda es la trazabilidad. La notificación al estudiante
 convierte al afectado en un detector adicional, independiente del propio sistema.
+
+**Dependencia que hay que hacer explícita.** El control principal de este escenario —"validar que
+el grupo pertenece a la asignación vigente del profesor"— no se sostiene solo: descansa por completo
+en que el **registro de asignación docente sea íntegro y confiable**. Ese registro lo produce el
+jefe de carrera, y por eso su módulo se analiza aparte en el escenario 5. Si alguien puede alterar
+la asignación, esta verificación seguirá respondiendo "sí, autorizado" y el control quedará
+neutralizado sin haber sido vulnerado técnicamente.
 
 ---
 
@@ -168,7 +186,7 @@ ese esfuerzo en MFA.
 | Elemento | Análisis |
 |---|---|
 | **Activo** | El modelo de autorización: la asignación de roles y permisos y su aplicación efectiva. Es un **metaactivo** — no es información académica en sí, pero es lo que determina quién puede tocar toda la demás. |
-| **Amenaza** | Usuario autenticado con privilegios bajos que busca ampliarlos (escalada vertical); usuario que accede a recursos de otro usuario de su mismo nivel (escalada horizontal); administrador que otorga permisos excesivos sin revisión; cuenta con permisos heredados de un cargo que la persona ya no ocupa. |
+| **Amenaza** | Usuario autenticado con privilegios bajos que busca ampliarlos (escalada vertical); usuario que accede a recursos de otro usuario de su mismo nivel (escalada horizontal); administrador o **jefe de carrera** que otorga permisos excesivos sin revisión; cuenta con permisos heredados de un cargo que la persona ya no ocupa (un jefe que cambió de adscripción y conserva el alcance anterior). |
 | **Vulnerabilidad** | (a) El control de acceso se aplica solo en la interfaz: se ocultan los elementos del menú, pero los endpoints no verifican nada. (b) El rol se toma de un valor enviado por el cliente en lugar de derivarse de la sesión en el servidor. (c) Permisos por defecto amplios y ausencia de *deny by default* en endpoints nuevos. (d) No hay revisión periódica ni caducidad de las asignaciones. (e) Los cambios de rol no quedan registrados. |
 | **Ataque** | Invocación directa de rutas administrativas descubiertas en el código del cliente o por fuerza bruta de rutas; modificación del campo de rol antes de enviar la petición; alteración de la carga útil de un token cuya firma no se valida; uso de permisos residuales de un rol anterior que nunca fue revocado. |
 | **Impacto** | Control total del sistema: alta o modificación de usuarios, otorgamiento de privilegios permanentes al atacante, alteración de calificaciones y, sobre todo, **borrado o manipulación de los logs**, lo que destruye la evidencia del propio ataque y hace imposible reconstruir lo ocurrido. |
@@ -187,6 +205,36 @@ privilegio administrativo, la bitácora es lo único que queda, y solo sirve si 
 
 ---
 
+### Escenario 5 — Alta de grupos y asignación docente *(rol de jefe de carrera)*
+
+> **Caso.** El jefe de carrera da de alta el grupo `ISC-601`, le asigna un profesor y un horario.
+> El módulo permite modificar esa asignación en cualquier momento, sin registro del cambio y sin
+> restricción de periodo: se puede asignar un profesor a un grupo de un semestre ya cerrado y
+> revertirlo minutos después.
+
+| Elemento | Análisis |
+|---|---|
+| **Activo** | El catálogo de grupos y la **asignación docente–horario**. Su valor no es académico sino **estructural**: es el dato del que depende la autorización de todo el módulo de calificaciones. Secundariamente, la disponibilidad del horario (aula y franja) de la que depende que las clases ocurran. |
+| **Amenaza** | Jefe que se asigna a sí mismo, o asigna a un cómplice, un grupo que no le corresponde; profesor que presiona o convence al jefe para ser asignado a un grupo ajeno; cuenta de jefe comprometida (es un objetivo valioso precisamente por lo que habilita); error operativo que genera asignaciones duplicadas o choques de horario. |
+| **Vulnerabilidad** | (a) La asignación puede modificarse sin registro del cambio ni autorización de una segunda persona. (b) No se valida que el periodo esté abierto, de modo que se permiten cambios **retroactivos** sobre semestres cerrados. (c) El rol de jefe se trata como global: cualquier jefe puede tocar grupos de cualquier carrera, no solo de la suya. (d) No se valida el choque de horario ni de aula. (e) No hay separación de funciones: nada impide que quien asigna profesores sea también quien capture calificaciones. |
+| **Ataque** | El jefe (o quien controle su cuenta) se asigna como profesor del grupo `ISC-601`, entra al módulo de calificaciones —donde la verificación del escenario 1 **responde correctamente que sí está autorizado**—, modifica las notas y revierte la asignación. El sistema queda en un estado final consistente y sin rastro del paso intermedio. |
+| **Impacto** | **Neutraliza el control principal del escenario 1 sin vulnerarlo.** Alteración de calificaciones con apariencia plenamente legítima; imposibilidad de detectar el fraude revisando solo el módulo de calificaciones, porque ahí todo fue correcto; adicionalmente, grupos sin profesor, choques de aula y clases que no ocurren. |
+| **Riesgo** | **Alto.** Probabilidad media (exige una cuenta de jefe, lo que acota mucho a los actores posibles) × impacto muy alto (invalida el control de integridad académica y es de los ataques más difíciles de detectar, porque no deja anomalías donde se las buscaría). |
+| **Control** | **Detectivo (prioritario):** registrar toda alta y todo cambio de asignación en un log append-only con autor, fecha, valor anterior y valor nuevo — es el único control que ve el paso intermedio del ataque. **Preventivo:** acotar el alcance del jefe a su propio programa o carrera, nunca global. **Preventivo:** cerrar el periodo y exigir autorización de nivel superior, con motivo obligatorio, para cualquier cambio retroactivo. **Preventivo:** separación de funciones — quien asigna profesores no puede capturar calificaciones con la misma cuenta. **Preventivo:** validar choques de horario, aula y carga docente al guardar. **Detectivo:** alertar cuando un profesor recién asignado capture calificaciones de forma inmediata, o cuando una asignación se revierta poco después de haberse creado. |
+
+**Justificación del control.** Este escenario es el que mejor muestra por qué la matriz no puede
+analizarse fila por fila de forma aislada: el ataque **no rompe ningún control, los usa**. Cada
+verificación individual responde correctamente, y aun así el resultado es fraudulento, porque el
+dato sobre el que se apoya la verificación es manipulable. Por eso el control prioritario aquí es
+**detectivo y no preventivo**, al revés que en el resto de la matriz: contra un jefe que actúa
+dentro de sus atribuciones formales la prevención tiene poco margen — su trabajo *es* asignar
+profesores— y lo que queda es que el cambio sea visible, atribuible e irreversible en el registro.
+La separación de funciones y el cierre de periodo son los dos controles preventivos que sí aplican,
+porque no le quitan al jefe su función legítima: le quitan la posibilidad de **encadenarla** con la
+captura de calificaciones y de aplicarla sobre el pasado.
+
+---
+
 ### Resumen de la matriz
 
 | # | Escenario | Activo | Vulnerabilidad principal | Riesgo | Control principal |
@@ -196,11 +244,14 @@ privilegio administrativo, la bitácora es lo único que queda, y solo sirve si 
 | 2 | Documentos | Documentos oficiales y el servidor | Archivos servidos por ruta pública predecible | Alto | Entrega mediada por la aplicación desde almacenamiento privado |
 | 3 | Autenticación | Credenciales y sesión | Sin límite de intentos, sin MFA, sesión no regenerada | Crítico | Rate limiting + Argon2/bcrypt + MFA + regeneración de sesión |
 | 4 | Roles y permisos | Modelo de autorización | Control de acceso aplicado solo en la interfaz | Crítico | Autorización en el servidor por endpoint, *deny by default* |
+| 5 | Alta de grupos y asignación docente | Asignación docente–horario | Asignación modificable sin registro, sin cierre de periodo y sin separación de funciones | Alto | Log append-only de asignaciones + separación de funciones + cierre de periodo |
 
-**Orden de atención propuesto:** 3 → 4 → 1 → 2 → 0. Los dos escenarios críticos van primero porque
-comprometen los controles de todos los demás: sin una autenticación sólida y una autorización
-aplicada en el servidor, los controles de calificaciones, documentos y perfiles pueden evadirse
-entrando como un usuario que sí está autorizado.
+**Orden de atención propuesto:** 3 → 4 → 1 → 5 → 2 → 0. Los dos escenarios críticos van primero
+porque comprometen los controles de todos los demás: sin una autenticación sólida y una
+autorización aplicada en el servidor, los controles de calificaciones, documentos y perfiles pueden
+evadirse entrando como un usuario que sí está autorizado. El escenario 5 va inmediatamente después
+del 1 porque no tiene sentido separarlos: **el control del 1 no es confiable mientras el 5 siga
+abierto**, ya que su verificación se apoya en un dato que el 5 permite alterar.
 
 ---
 
@@ -298,6 +349,13 @@ que probarían lo ocurrido.
 Por eso el orden de atención de la sección 4 empieza por autenticación y roles: **se protege primero
 lo que habilita el acceso a lo más valioso**, aunque lo más valioso sea otra cosa.
 
+Analizar el rol de jefe de carrera nos obligó a agregar una tercera categoría que no habíamos
+considerado: los **activos de los que dependen los controles**. La asignación docente–horario no
+tiene valor por sí misma —a nadie le interesa robarla— pero es el dato que la verificación de
+calificaciones consulta para decidir si autoriza. Alterarlo no vulnera ningún control: los apaga.
+De ahí una regla que aplicamos al resto de la matriz: **si un control se apoya en un dato, ese dato
+hereda la criticidad del control**, y protegerlo deja de ser opcional.
+
 ---
 
 ## 6. Cierre
@@ -330,7 +388,7 @@ propias decisiones a lo largo del proyecto:
 
 ## 7. Criterios de aceptación
 
-- [x] La matriz contiene mínimo cuatro escenarios distintos *(cuatro del reto, más la actividad guiada)*.
+- [x] La matriz contiene mínimo cuatro escenarios distintos *(cinco del reto, más la actividad guiada)*.
 - [x] Cada fila distingue activo, amenaza, vulnerabilidad, ataque, impacto y control *(se agrega riesgo)*.
 - [x] Los controles son coherentes con el problema descrito *(cada bloque incluye su justificación)*.
 - [x] Las decisiones están justificadas, no solo enumeradas.
