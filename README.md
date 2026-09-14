@@ -43,7 +43,8 @@ proyDesSeguro/
 └── docs/
     └── security/
         ├── SC-LAB-001-analisis-inicial.md
-        └── SC-LAB-002-secure-sdlc-map.md
+        ├── SC-LAB-002-secure-sdlc-map.md
+        └── SC-LAB-003-shift-left-analysis.md
 ```
 
 ## Evidencias
@@ -52,6 +53,7 @@ proyDesSeguro/
 |---|---|---|
 | **SC-LAB-001** — Identificación inicial de activos, amenazas, vulnerabilidades, ataques, impactos, riesgos y controles | [docs/security/SC-LAB-001-analisis-inicial.md](docs/security/SC-LAB-001-analisis-inicial.md) | Entregado |
 | **SC-LAB-002** — Mapa de seguridad a lo largo del SDLC (Secure SDLC, Security by Design/Default, Shift Left) | [docs/security/SC-LAB-002-secure-sdlc-map.md](docs/security/SC-LAB-002-secure-sdlc-map.md) | Entregado |
+| **SC-LAB-003** — Costo de corrección y Shift Left: origen vs. descubrimiento, retrabajo y vigilancia continua | [docs/security/SC-LAB-003-shift-left-analysis.md](docs/security/SC-LAB-003-shift-left-analysis.md) | Entregado |
 
 ## Convenciones de trabajo
 
