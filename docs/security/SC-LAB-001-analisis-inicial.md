@@ -392,4 +392,4 @@ propias decisiones a lo largo del proyecto:
 - [x] Cada fila distingue activo, amenaza, vulnerabilidad, ataque, impacto y control *(se agrega riesgo)*.
 - [x] Los controles son coherentes con el problema descrito *(cada bloque incluye su justificación)*.
 - [x] Las decisiones están justificadas, no solo enumeradas.
-- [ ] La evidencia está versionada y visible en el repositorio del equipo *(pendiente: commit y push)*.
+- [x] La evidencia está versionada y visible en el repositorio del equipo.

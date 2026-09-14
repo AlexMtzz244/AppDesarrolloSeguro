@@ -42,7 +42,8 @@ proyDesSeguro/
 ├── README.md
 └── docs/
     └── security/
-        └── SC-LAB-001-analisis-inicial.md
+        ├── SC-LAB-001-analisis-inicial.md
+        └── SC-LAB-002-secure-sdlc-map.md
 ```
 
 ## Evidencias
@@ -50,6 +51,7 @@ proyDesSeguro/
 | Práctica | Entregable | Estado |
 |---|---|---|
 | **SC-LAB-001** — Identificación inicial de activos, amenazas, vulnerabilidades, ataques, impactos, riesgos y controles | [docs/security/SC-LAB-001-analisis-inicial.md](docs/security/SC-LAB-001-analisis-inicial.md) | Entregado |
+| **SC-LAB-002** — Mapa de seguridad a lo largo del SDLC (Secure SDLC, Security by Design/Default, Shift Left) | [docs/security/SC-LAB-002-secure-sdlc-map.md](docs/security/SC-LAB-002-secure-sdlc-map.md) | Entregado |
 
 ## Convenciones de trabajo
 
