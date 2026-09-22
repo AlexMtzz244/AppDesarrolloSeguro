@@ -1,19 +1,48 @@
 # Decisiones pendientes de aprobación
 
 > **Ninguna de estas decisiones corresponde al equipo de desarrollo.** Todas
-> están implementadas como configuración administrable con un valor por
-> defecto seguro, y todas requieren aprobación antes de un despliegue
+> están implementadas como configuración administrable con una **propuesta
+> concreta del equipo**, y todas requieren firma antes de un despliegue
 > productivo.
 
-El criterio es el de [SC-LAB-002 §6.3](security/SC-LAB-002-secure-sdlc-map.md):
-**si la respuesta está en el reglamento institucional, la define una persona y
-el sistema solo la aplica**. Codificar un valor inventado no lo convierte en
-decidido — lo convierte en invisible, que es peor.
+## Cómo se resolvió la tensión de fondo
 
-Por eso este archivo existe: convierte once omisiones silenciosas en once
-campos vacíos que alguien tiene que llenar. Es Shift Left en su forma más
-barata, exactamente como lo describe SC-LAB-003 §3: *"no es una herramienta ni
-un proceso nuevo, es un campo obligatorio en un formato que ya usamos"*.
+La regla de [SC-LAB-002 §6.3](security/SC-LAB-002-secure-sdlc-map.md) es
+clara: *si la respuesta está en el reglamento institucional, la define una
+persona y el sistema solo la aplica*. Y SC-SRS-001 §8 añade que **codificar un
+valor inventado no lo convierte en decidido, lo convierte en invisible, que es
+peor**.
+
+La primera lectura de eso fue no sembrar nada. El resultado: tres funciones
+bloqueadas que nadie podía probar ni criticar, y una decisión que seguía sin
+tomarse porque no había nada concreto sobre la mesa.
+
+La lectura correcta es que **el problema nunca fue que alguien decidiera: fue
+que la decisión quedara invisible**. Es exactamente el argumento del escenario
+5 — contra un actor que opera dentro de sus atribuciones la prevención tiene
+poco margen, y lo que queda es que el acto sea *visible, atribuible e
+irreversible*.
+
+Así que se aplica el mismo patrón a la configuración:
+
+| Propiedad | Cómo se consigue |
+|---|---|
+| **Visible** | `/panel/decisiones` la ve cualquier usuario autenticado, no solo administradores |
+| **Atribuible** | Al firmar se registra quién aprueba y cuándo, en la bitácora append-only |
+| **Exigible** | El arranque en producción **falla** mientras una decisión bloqueante siga sin firma |
+
+Ese último punto es lo que impide que la propuesta se convierta en el valor
+invisible que §8 prohíbe. **Un valor que bloquea el despliegue no se puede
+ignorar.**
+
+Tres decisiones bloquean producción: **D-06**, **D-07** y **D-10**. No son
+todas a propósito — marcarlas todas volvería el arranque imposible y alguien
+terminaría quitando la comprobación entera. Un control que estorba se acaba
+desactivando.
+
+Este archivo es Shift Left en su forma más barata, tal como lo describe
+SC-LAB-003 §3: *"no es una herramienta ni un proceso nuevo, es un campo
+obligatorio en un formato que ya usamos"*.
 
 ---
 
@@ -23,14 +52,27 @@ un proceso nuevo, es un campo obligatorio en un formato que ya usamos"*.
 |---|---|
 | **Aprueba** | Servicios escolares |
 | **Dónde vive** | Tablas `tipo_solicitud` y `estado_solicitud` |
-| **Valor por defecto** | **Vacío.** No se siembra ningún tipo |
-| **Efecto hoy** | No se puede crear ninguna solicitud |
+| **Propuesta** | Tres trámites genéricos, flujo común, SLA 120 h |
+| **Estado** | Sembrado **sin firma** |
 
-El sistema arranca sin poder crear solicitudes, y eso es correcto. Sembrar
-tipos plausibles —"constancia de estudios", "baja temporal"— sería inventar
-reglas académicas que nadie aprobó. La pantalla de solicitudes dice
-explícitamente que el catálogo está pendiente, en vez de mostrar un formulario
-que no lleva a ninguna parte.
+### Qué se propone
+
+| Tipo | Por qué este y no otro |
+|---|---|
+| `constancia-estudios` | Existe en cualquier institución. No define requisitos ni criterios de procedencia: solo abre el canal |
+| `revision-calificacion` | **Cubre un hueco que nadie había nombrado**: el flujo de corrección de calificaciones no tenía punto de entrada documentado, así que toda corrección aparecía en la bitácora sin causa registrada |
+| `correccion-datos-perfil` | **Cubre el hueco de D-02**: no existía vía para pedir corregir nombre o matrícula, datos que a propósito no son editables por el titular |
+
+Flujo: `recibida → en revisión → resuelta / rechazada`.
+
+Deliberadamente **no** modela etapas internas de ninguna área. Inventarlas
+sería describir un proceso administrativo que nadie nos contó — ahí sí estaría
+la regla académica inventada.
+
+### Qué falta decidir
+
+Si estos tres trámites son los correctos, si 120 horas hábiles es un SLA
+realista, y qué área es responsable de cada uno.
 
 ## D-02 · Campos editables del perfil y proceso de corrección
 
@@ -38,12 +80,20 @@ que no lleva a ninguna parte.
 |---|---|
 | **Aprueba** | Servicios escolares |
 | **Dónde vive** | `esquemaActualizarPerfil` + parámetro `perfil.campos_editables` |
-| **Valor por defecto** | Solo `telefono` |
+| **Propuesta** | Solo `telefono` editable · corrección vía solicitud |
 
 Nombre, apellidos y matrícula **no** son editables por el titular: son datos
 que la institución asigna, y permitir cambiarlos convertiría el perfil en una
-vía de suplantación. Falta definir el proceso por el que un estudiante solicita
-corregir un dato erróneo.
+vía de suplantación.
+
+El hueco que esta decisión dejaba abierto —*"¿y si el dato está mal?"*— lo
+cierra el tipo de solicitud `correccion-datos-perfil` propuesto en D-01: da el
+canal, con responsable y rastro, sin abrir el campo.
+
+### Qué falta decidir
+
+Qué otros campos podría editar el titular, y quién resuelve las solicitudes de
+corrección.
 
 ## D-03 · Escala de calificaciones y reglas de publicación/corrección
 
@@ -91,31 +141,74 @@ Requiere un periodo de observación antes de fijarlos.
 |---|---|
 | **Aprueba** | Seguridad informática |
 | **Dónde vive** | `MfaService` + `CAPTCHA_PROVEEDOR` |
-| **Valor por defecto** | TOTP propio · 10 códigos de recuperación de un solo uso |
+| **Propuesta** | TOTP propio · 10 códigos de un solo uso · restablecimiento presencial con doble aprobación |
+| **Bloquea producción** | **Sí** |
 
-Falta definir el procedimiento cuando alguien pierde su dispositivo **y** sus
-códigos de recuperación. Hoy no hay ninguno, y esa ausencia es deliberada: un
-procedimiento de rescate mal diseñado es la vía preferida para saltarse el
-segundo factor. Debe definirse con verificación de identidad presencial o
-equivalente.
+### Qué se propone para el caso difícil
 
-`CAPTCHA_PROVEEDOR=ninguno` **no arranca en producción**: la validación de
-coherencia del entorno lo rechaza.
+Perdido el dispositivo **y** los códigos de recuperación:
+
+1. Solicitud **presencial** con identificación oficial.
+2. **Dos** aprobaciones administrativas, de cuentas distintas.
+3. El restablecimiento **no otorga acceso**: solo borra la credencial TOTP
+   para que el titular vuelva a enrolarse desde su propio dispositivo.
+4. Queda auditado y se notifica al titular.
+
+El punto 3 es el que importa. Un procedimiento de rescate que devolviera
+acceso sería la vía preferida para saltarse el segundo factor — más cómoda que
+atacar el TOTP. Así, lo peor que consigue quien lo abuse es *dejar sin MFA* a
+una cuenta, no *entrar* en ella.
+
+El punto 2 aplica la misma lógica que D-07: ninguna cuenta individual completa
+la operación.
+
+### Qué falta decidir
+
+Quién verifica la identidad presencialmente, qué documento se acepta, y si
+`CAPTCHA_PROVEEDOR` será Turnstile, reCAPTCHA u otro. Con `ninguno`, la
+aplicación **no arranca en producción**.
 
 ## D-07 · Autoridad superior para cambios retroactivos
 
 | | |
 |---|---|
 | **Aprueba** | Dirección académica |
-| **Dónde vive** | Permiso `periodo:modificar-retroactivo` |
-| **Valor por defecto** | **Sin designar.** El flujo está bloqueado |
+| **Dónde vive** | Rol `autoridad-academica` + par incompatible en `PARES_INCOMPATIBLES` |
+| **Propuesta** | Partir el permiso en dos, no designar a una persona |
+| **Bloquea producción** | **Sí** |
 
-Ninguna cuenta tiene este permiso en la matriz sembrada, así que ningún cambio
-sobre un periodo cerrado es posible. El sistema no inventa una jerarquía que no
-existe.
+### La pregunta estaba mal planteada
 
-Falta designar quién autoriza, con qué vigencia y bajo qué procedimiento
-documentado.
+D-07 preguntaba *"¿quién es la autoridad superior?"*. Responderla designando a
+alguien con `periodo:modificar-retroactivo` habría creado **una cuenta capaz
+de alterar el pasado por sí sola** — precisamente la concentración de poder
+que el escenario 5 identifica como el riesgo, y con el agravante de que allí
+el actor al menos tenía que encadenar dos operaciones.
+
+### Qué se propone en su lugar
+
+Dos permisos declarados **incompatibles** por RNFS-007:
+
+| Permiso | Quién lo tiene | Qué hace |
+|---|---|---|
+| `periodo:autorizar-retroactivo` | `autoridad-academica` | **Concede** la autorización. No puede usarla |
+| `periodo:modificar-retroactivo` | `administrador` | **Ejecuta** el cambio. No puede concederse la autorización |
+
+La consecuencia: **alterar un periodo cerrado exige forzosamente dos cuentas
+distintas y dos motivos escritos.** Ninguna persona completa el flujo sola.
+
+Además: la autorización es de un solo uso, vence en 24 h (máximo 72), emite
+**alerta crítica inmediata**, y es visible para cualquiera que pueda leer
+periodos — una autorización que solo ve quien la concedió no la revisa nadie.
+
+Es el mismo razonamiento que el escenario 5 aplica al jefe de carrera: no se
+le quita su función legítima, se le quita la posibilidad de **encadenarla**.
+
+### Qué falta decidir
+
+Solo una cosa, y es la que corresponde a la institución: **quién ocupa el rol
+`autoridad-academica`**. El mecanismo ya no depende de esa respuesta para ser
+seguro.
 
 ## D-08 · Matriz final rol–permiso–operación y frecuencia de revisión
 
@@ -177,16 +270,16 @@ incidente no hay tiempo de decidir quién decide.
 
 ## Resumen para quien tenga que aprobarlas
 
-| ID | Decisión | Aprueba | Bloquea algo hoy |
+| ID | Decisión | Aprueba | Estado |
 |---|---|---|---|
-| D-01 | Catálogo de solicitudes | Servicios escolares | **Sí** — no se crean solicitudes |
+| D-01 | Catálogo de solicitudes | Servicios escolares | Propuesto, sin firma |
 | D-02 | Campos editables del perfil | Servicios escolares | No |
 | D-03 | Escala y reglas de calificación | Dirección académica | No |
 | D-04 | Documentos: formatos, tamaño, cuota | Servicios escolares | No |
 | D-05 | Umbrales de límite y alertas | Seguridad informática | No |
-| D-06 | MFA y recuperación del 2.º factor | Seguridad informática | **Sí** en producción |
-| D-07 | Autoridad para cambios retroactivos | Dirección académica | **Sí** — flujo bloqueado |
+| D-06 | MFA y recuperación del 2.º factor | Seguridad informática | **Bloquea producción** |
+| D-07 | Autoridad para cambios retroactivos | Dirección académica | **Bloquea producción** |
 | D-08 | Matriz rol–permiso definitiva | Académica + Seguridad | No |
 | D-09 | Retención y requisitos legales | Jurídico | No |
-| D-10 | Volumen, SLA, RTO, RPO, plataforma | Dirección de TI | **Sí** para desplegar |
+| D-10 | Volumen, SLA, RTO, RPO, plataforma | Dirección de TI | **Bloquea producción** |
 | D-11 | Incidentes, navegadores, identidad | Dirección de TI | No |

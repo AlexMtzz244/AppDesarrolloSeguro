@@ -11,6 +11,7 @@
 
 export * from './comunes.js';
 export * from './permisos.js';
+export * from './decisiones.js';
 export * from './autenticacion.js';
 export * from './academico.js';
 export * from './calificaciones.js';

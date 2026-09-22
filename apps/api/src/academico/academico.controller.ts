@@ -22,6 +22,19 @@ import { PeriodosService } from './periodos.service.js';
 
 const esquemaCrearGrupoConMotivo = esquemaCrearGrupo.extend({ motivo: esquemaMotivo });
 
+/**
+ * La vigencia maxima es de 72 horas a proposito.
+ *
+ * Una autorizacion extraordinaria que durase indefinidamente dejaria de ser
+ * excepcional: se concederia una vez y se usaria durante meses, que es como
+ * los permisos temporales se convierten en permanentes (SC-LAB-001 §6, "los
+ * permisos que se acumulan").
+ */
+const esquemaAutorizacion = z.object({
+  motivo: esquemaMotivo,
+  vigenteHoras: z.coerce.number().int().min(1).max(72).default(24),
+});
+
 @ApiTags('academico')
 @Controller()
 export class AcademicoController {
@@ -117,6 +130,72 @@ export class AcademicoController {
   ) {
     const { motivo, ...datos } = cuerpo;
     return this.grupos.crear(actor, datos, motivo);
+  }
+
+  // --- Cambios retroactivos: el flujo de DOS cuentas (D-07) ---------------
+
+  @Post('periodos/:id/cerrar')
+  @Politica({ permiso: 'periodo:modificar', relacion: 'no-aplica', exigeMotivo: true })
+  @ApiOperation({ summary: 'Cierra un periodo academico (RF-021)' })
+  async cerrarPeriodo(
+    @ActorActual() actor: Actor,
+    @Param('id') id: string,
+    @Body(validar(z.object({ motivo: esquemaMotivo }))) cuerpo: { motivo: string },
+  ) {
+    return this.periodos.cerrar(actor, id, cuerpo.motivo);
+  }
+
+  /**
+   * Concede una autorizacion extraordinaria sobre un periodo cerrado (RF-033).
+   *
+   * Exige `periodo:autorizar-retroactivo`, que por RNFS-007 **no puede
+   * coexistir** con `periodo:modificar-retroactivo`. La consecuencia es la
+   * propiedad que resuelve D-07: quien concede no puede ejecutar, asi que
+   * alterar el pasado necesita forzosamente dos cuentas distintas y dos
+   * motivos escritos.
+   *
+   * Designar una sola persona con ambos permisos habria creado exactamente la
+   * concentracion de poder que SC-LAB-001 escenario 5 identifica como el
+   * riesgo — con el agravante de que ahi el actor al menos tenia que encadenar
+   * dos operaciones, y aqui le habria bastado una.
+   */
+  @Post('periodos/:id/autorizaciones')
+  @Politica({
+    permiso: 'periodo:autorizar-retroactivo',
+    relacion: 'no-aplica',
+    exigeMotivo: true,
+    exigeMfa: true,
+  })
+  @ApiOperation({
+    summary: 'Concede autorizacion extraordinaria para tocar un periodo cerrado (RF-033)',
+    description:
+      'Quien concede NO puede ejecutar el cambio: son permisos incompatibles. ' +
+      'La autorizacion es de un solo uso, tiene vigencia y emite alerta critica.',
+  })
+  async autorizarCambioRetroactivo(
+    @ActorActual() actor: Actor,
+    @Param('id') id: string,
+    @Body(validar(esquemaAutorizacion))
+    cuerpo: { motivo: string; vigenteHoras: number },
+  ) {
+    return this.periodos.autorizarCambioRetroactivo(
+      actor,
+      id,
+      cuerpo.motivo,
+      cuerpo.vigenteHoras,
+    );
+  }
+
+  @Get('periodos/:id/autorizaciones')
+  @Politica({ permiso: 'periodo:leer', relacion: 'no-aplica' })
+  @ApiOperation({
+    summary: 'Autorizaciones extraordinarias del periodo',
+    description:
+      'Visible para todo quien pueda leer periodos. Una autorizacion ' +
+      'extraordinaria que solo ve quien la concedio no es revisable por nadie.',
+  })
+  async listarAutorizaciones(@Param('id') id: string) {
+    return this.periodos.listarAutorizaciones(id);
   }
 
   // --- Asignacion docente --------------------------------------------------

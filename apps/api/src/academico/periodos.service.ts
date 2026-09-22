@@ -88,10 +88,20 @@ export class PeriodosService {
    * en la peticion. Una bandera la marca quien hace el cambio; una
    * autorizacion la concede alguien mas, deja rastro y caduca.
    *
-   * D-07 esta pendiente: mientras direccion academica no designe a la
-   * autoridad superior, ninguna cuenta tiene `periodo:modificar-retroactivo`
-   * en la matriz sembrada, asi que este flujo queda **bloqueado**. Ese es el
-   * valor por defecto seguro: no se inventa una jerarquia que no existe.
+   * **D-07 resuelto por separacion de funciones, no por designacion.**
+   *
+   * La pregunta original era "quien es la autoridad superior". Designar a una
+   * persona con `periodo:modificar-retroactivo` habria creado una cuenta capaz
+   * de alterar el pasado por si sola.
+   *
+   * La respuesta que adoptamos parte el permiso en dos: `:autorizar-` concede,
+   * `:modificar-` ejecuta, y RNFS-007 los declara incompatibles. Ninguna
+   * cuenta puede tener ambos, asi que **un cambio retroactivo exige
+   * forzosamente dos personas distintas y dos motivos escritos**.
+   *
+   * Es el mismo razonamiento que SC-LAB-001 escenario 5 aplica al jefe de
+   * carrera: no se le quita su funcion legitima, se le quita la posibilidad de
+   * **encadenarla** con la operacion que la aprovecha.
    */
   async autorizarCambioRetroactivo(
     actor: Actor,
@@ -136,11 +146,66 @@ export class PeriodosService {
         despues: { periodo: periodo.idPublico, vigenteHasta: autorizacion.vigenteHasta },
       });
 
+      // Alerta critica en el acto, no en el barrido periodico de cada 10
+      // minutos. Un cambio retroactivo sobre un semestre cerrado es el evento
+      // mas grave que el sistema admite, y el barrido existe para patrones
+      // temporales que necesitan un segundo evento para ser visibles; este no.
+      await tx.alerta.create({
+        data: {
+          idPublico: ulid(),
+          tipo: 'cambio-privilegio',
+          severidad: 'critica',
+          detalle:
+            `${actor.correo} concedio autorizacion extraordinaria sobre un periodo ` +
+            `cerrado, vigente ${vigenteHoras} h. Motivo: ${motivo}. ` +
+            'Verificar que el cambio ejecutado despues corresponda a lo autorizado. ' +
+            'Quien concede no puede ejecutar: debe haber una segunda cuenta involucrada.',
+          claveIdempotencia: `autorizacion-extraordinaria:${autorizacion.idPublico}`,
+        },
+      });
+
       return {
         id: autorizacion.idPublico,
         vigenteHasta: autorizacion.vigenteHasta.toISOString(),
       };
     });
+  }
+
+  /**
+   * Autorizaciones extraordinarias de un periodo, usadas y sin usar.
+   *
+   * Se listan TODAS, no solo las vigentes. Una autorizacion consumida hace
+   * tres meses es precisamente la que interesa al revisar si el pasado se
+   * altero, y ocultarla dejaria la revision ciega justo donde importa.
+   */
+  async listarAutorizaciones(periodoIdPublico: string) {
+    const periodo = await this.prisma.periodo.findUnique({
+      where: { idPublico: periodoIdPublico },
+      select: { id: true },
+    });
+    if (!periodo) throw new ErrorNegocio('PERIODO_DESCONOCIDO', 'El periodo no existe.');
+
+    const autorizaciones = await this.prisma.autorizacionExtraordinaria.findMany({
+      where: { periodoId: periodo.id },
+      orderBy: { creadaEl: 'desc' },
+      select: {
+        idPublico: true,
+        motivo: true,
+        vigenteHasta: true,
+        usadaEl: true,
+        creadaEl: true,
+      },
+    });
+
+    const ahora = new Date();
+    return autorizaciones.map((a) => ({
+      id: a.idPublico,
+      motivo: a.motivo,
+      creadaEl: a.creadaEl.toISOString(),
+      vigenteHasta: a.vigenteHasta.toISOString(),
+      usadaEl: a.usadaEl?.toISOString() ?? null,
+      estado: a.usadaEl ? 'usada' : a.vigenteHasta <= ahora ? 'vencida' : 'vigente',
+    }));
   }
 
   /**

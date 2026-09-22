@@ -50,6 +50,9 @@ hereda la criticidad del control**.
   del manual.)*
 - **Administrador** — usuarios, roles, permisos y consulta de auditoría, con
   mínimo privilegio. **No** captura calificaciones.
+- **Autoridad académica** — **concede** autorizaciones sobre periodos cerrados,
+  y no puede usarlas. *(Rol agregado al resolver D-07: la pregunta no era quién
+  puede alterar el pasado, sino cómo lograr que nadie pueda hacerlo solo.)*
 
 Que el administrador no pueda calificar y que el jefe no pueda hacerlo con la
 misma cuenta no es un descuido: es la separación de funciones que impide
@@ -100,6 +103,7 @@ Contraseña para todas: `SemillaDesarrollo!2026`
 | Correo | Rol |
 |---|---|
 | `admin@securecampus.edu.mx` | Administrador |
+| `autoridad@securecampus.edu.mx` | Autoridad académica |
 | `jefe.isc@securecampus.edu.mx` | Jefe de carrera (ISC) |
 | `profesor@securecampus.edu.mx` | Profesor |
 | `estudiante.a@securecampus.edu.mx` | Estudiante |
@@ -110,6 +114,10 @@ Contraseña para todas: `SemillaDesarrollo!2026`
 >
 > Hay dos estudiantes a propósito: sin dos cuentas del mismo rol no se puede
 > comprobar que A no alcanza los datos de B.
+>
+> Y hay una cuenta de **autoridad académica** que solo puede *conceder*
+> autorizaciones sobre periodos cerrados, nunca usarlas: alterar el pasado
+> exige forzosamente dos cuentas distintas (ver D-07).
 
 ---
 
@@ -156,6 +164,8 @@ proyDesSeguro/
 | Asignación versionada | [asignaciones.service.ts](apps/api/src/academico/asignaciones.service.ts) |
 | Alertas detectivas | [alertas.service.ts](apps/api/src/alertas/alertas.service.ts) |
 | Entrega privada de documentos | [documentos.service.ts](apps/api/src/documentos/documentos.service.ts) |
+| Doble cuenta para cambios retroactivos | [permisos.ts](packages/contracts/src/permisos.ts) · `PARES_INCOMPATIBLES` |
+| Firma de decisiones institucionales | [decisiones.service.ts](apps/api/src/configuracion/decisiones.service.ts) |
 
 ---
 
@@ -186,8 +196,10 @@ proyDesSeguro/
 ### Operación
 
 - [**Decisiones pendientes**](docs/DECISIONES-PENDIENTES.md) — once decisiones
-  que corresponden a la institución, no al equipo. Tres bloquean
-  funcionalidad hoy.
+  que corresponden a la institución, no al equipo. El sistema propone un valor
+  para cada una y funciona con él, pero la propuesta es **visible** en
+  `/panel/decisiones`, **atribuible** al firmarse, y **exigible**: el arranque
+  en producción falla mientras D-06, D-07 o D-10 sigan sin firma.
 - [**Operación e incidentes**](docs/OPERACION.md) — SLA, respuesta, respaldos,
   endurecimiento.
 

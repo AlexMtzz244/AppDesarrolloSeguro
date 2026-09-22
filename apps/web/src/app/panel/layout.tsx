@@ -12,6 +12,7 @@ import {
   LogOut,
   ScrollText,
   ShieldAlert,
+  Stamp,
   User,
   Users,
 } from 'lucide-react';
@@ -48,6 +49,10 @@ const NAVEGACION: readonly Entrada[] = [
     permiso: 'auditoria:consultar',
   },
   { href: '/panel/alertas', etiqueta: 'Alertas', icono: ShieldAlert, permiso: 'alerta:consultar' },
+  // Visible para cualquier usuario autenticado a proposito: el mecanismo de
+  // decisiones existe para que las propuestas sin firmar NO sean invisibles.
+  // Restringirlo a administradores volveria a esconder lo que expone.
+  { href: '/panel/decisiones', etiqueta: 'Decisiones', icono: Stamp, permiso: 'perfil:leer' },
 ];
 
 /**

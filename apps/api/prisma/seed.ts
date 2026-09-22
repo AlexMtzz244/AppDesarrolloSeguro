@@ -8,24 +8,35 @@
  * repositorio tendria una cuenta de administrador. Por eso el script se niega
  * a correr cuando `NODE_ENV=production` sin una senal explicita.
  *
- * # Que NO se siembra
+ * # Sobre los catalogos sembrados como PROPUESTA
  *
- * El catalogo de tipos de solicitud, sus estados, responsables y SLA quedan
- * **vacios** (D-01). Sembrarlos con valores plausibles seria inventar reglas
- * academicas, que es justo lo que SC-SRS-001 §8 prohibe: "codificar un valor
- * inventado no lo convierte en decidido, lo convierte en invisible, que es
- * peor". El sistema arranca sin poder crear solicitudes, y eso es correcto
- * hasta que servicios escolares defina el catalogo.
+ * SC-SRS-001 §8 prohibe codificar valores inventados porque "se vuelven
+ * invisibles, que es peor". La lectura literal —no sembrar nada— dejaba tres
+ * funciones bloqueadas sin que nadie pudiera probarlas ni opinar sobre ellas.
+ *
+ * La lectura correcta es que el problema no era decidir, sino que la decision
+ * quedara invisible. Asi que lo sembrado aqui:
+ *
+ *   - es una PROPUESTA concreta, no un valor silencioso;
+ *   - queda con `aprobadoPor = null`, es decir, SIN FIRMA;
+ *   - la interfaz lo muestra como no aprobado;
+ *   - y el arranque en produccion FALLA mientras siga sin aprobar
+ *     (`DecisionesService.onApplicationBootstrap`).
+ *
+ * Un valor que impide desplegar no es invisible: es imposible de ignorar. Es
+ * el mismo patron de la bitacora append-only —visible, atribuible,
+ * irreversible— aplicado a la configuracion.
  */
 import { hash } from '@node-rs/argon2';
 import { PrismaClient } from '@prisma/client';
 import { ulid } from 'ulid';
 import {
+  DECISIONES_BLOQUEANTES,
   MATRIZ_ROL_PERMISOS,
   PERMISOS,
   PERMISOS_QUE_EXIGEN_MOTIVO,
   ROLES_BASE,
-  type Permiso,
+  type IdDecision,
   type RolBase,
 } from '@securecampus/contracts';
 
@@ -53,6 +64,13 @@ const DESCRIPCION_ROLES: Record<RolBase, { nombre: string; descripcion: string }
     nombre: 'Administrador',
     descripcion:
       'Gestiona usuarios, roles y permisos con minimo privilegio, y consulta la auditoria.',
+  },
+  'autoridad-academica': {
+    nombre: 'Autoridad academica',
+    descripcion:
+      'Concede autorizaciones extraordinarias sobre periodos cerrados. NO puede ejecutarlas ' +
+      'ni capturar calificaciones: por separacion de funciones, un cambio retroactivo exige ' +
+      'dos cuentas distintas (D-07).',
   },
 };
 
@@ -214,6 +232,12 @@ async function main(): Promise<void> {
       rol: 'administrador',
     },
     {
+      correo: 'autoridad@securecampus.edu.mx',
+      nombre: 'Direccion',
+      apellido: 'Academica',
+      rol: 'autoridad-academica',
+    },
+    {
       correo: 'jefe.isc@securecampus.edu.mx',
       nombre: 'Diego',
       apellido: 'Salazar',
@@ -360,33 +384,175 @@ async function main(): Promise<void> {
     });
   }
 
-  // --- Parametros pendientes de aprobacion (SC-SRS-001 §8) -----------------
-  const pendientes: { clave: string; valor: string; descripcion: string; decision: string }[] = [
+  // --- Catalogo de solicitudes: PROPUESTA de D-01 -------------------------
+  //
+  // Tres tramites que existen en cualquier institucion, con un flujo comun.
+  // Ninguno inventa una regla academica: no definen requisitos, plazos de
+  // titulacion ni criterios de procedencia. Solo abren el canal para pedir y
+  // dar seguimiento, que es lo que RF-060 exige.
+  //
+  // El segundo resuelve ademas un hueco que nadie habia nombrado: el flujo de
+  // correccion de calificaciones no tenia punto de entrada documentado, asi
+  // que toda correccion aparecia en la bitacora sin causa registrada.
+  //
+  // Y el tercero cubre el que D-02 dejaba abierto: no existia via para que un
+  // estudiante pidiera corregir su nombre o matricula, datos que a proposito
+  // no son editables por el titular.
+  const tiposSolicitud: {
+    clave: string;
+    nombre: string;
+    descripcion: string;
+    slaHoras: number;
+  }[] = [
+    {
+      clave: 'constancia-estudios',
+      nombre: 'Constancia de estudios',
+      descripcion:
+        'Solicitud de constancia que acredita la inscripcion vigente. El documento emitido ' +
+        'se adjunta a esta misma solicitud.',
+      slaHoras: 120,
+    },
+    {
+      clave: 'revision-calificacion',
+      nombre: 'Revision de calificacion',
+      descripcion:
+        'Solicitud de revision de una calificacion ya publicada. Es la via formal por la que ' +
+        'se origina una correccion: sin ella, el flujo de correccion carece de punto de ' +
+        'entrada documentado y las correcciones aparecen sin causa registrada.',
+      slaHoras: 120,
+    },
+    {
+      clave: 'correccion-datos-perfil',
+      nombre: 'Correccion de datos personales',
+      descripcion:
+        'Solicitud para corregir nombre, apellidos o matricula. Esos campos no son editables ' +
+        'por el titular a proposito, porque permitirlo convertiria el perfil en una via de ' +
+        'suplantacion; esta solicitud da el canal con responsable y rastro.',
+      slaHoras: 120,
+    },
+  ];
+
+  // Flujo generico y minimo. Deliberadamente NO modela etapas internas de
+  // ninguna area: inventarlas seria describir un proceso administrativo que
+  // nadie nos conto.
+  const estadosFlujo = [
+    { clave: 'recibida', nombre: 'Recibida', esInicial: true, esFinal: false, orden: 1 },
+    { clave: 'en-revision', nombre: 'En revision', esInicial: false, esFinal: false, orden: 2 },
+    { clave: 'resuelta', nombre: 'Resuelta', esInicial: false, esFinal: true, orden: 3 },
+    { clave: 'rechazada', nombre: 'Rechazada', esInicial: false, esFinal: true, orden: 4 },
+  ];
+
+  for (const tipo of tiposSolicitud) {
+    const registro = await prisma.tipoSolicitud.upsert({
+      where: { clave: tipo.clave },
+      create: {
+        idPublico: ulid(),
+        clave: tipo.clave,
+        nombre: tipo.nombre,
+        descripcion: tipo.descripcion,
+        slaHoras: tipo.slaHoras,
+      },
+      update: { descripcion: tipo.descripcion, slaHoras: tipo.slaHoras },
+      select: { id: true },
+    });
+
+    for (const estado of estadosFlujo) {
+      await prisma.estadoSolicitud.upsert({
+        where: {
+          tipoSolicitudId_clave: { tipoSolicitudId: registro.id, clave: estado.clave },
+        },
+        create: { idPublico: ulid(), tipoSolicitudId: registro.id, ...estado },
+        update: { nombre: estado.nombre, orden: estado.orden },
+      });
+    }
+  }
+  console.log(`  ${tiposSolicitud.length} tipos de solicitud (PROPUESTA D-01, sin firma)`);
+
+  // --- Parametros de las decisiones institucionales (SC-SRS-001 §8) --------
+  //
+  // Todos se siembran SIN firma. `DecisionesService` los lee al arrancar y, en
+  // produccion, detiene el proceso si una decision bloqueante sigue asi.
+  const parametros: {
+    clave: string;
+    valor: string;
+    descripcion: string;
+    decision: IdDecision;
+  }[] = [
     {
       clave: 'solicitudes.catalogo',
-      valor: 'vacio',
+      valor: tiposSolicitud.map((t) => t.clave).join(','),
       descripcion:
-        'Catalogo de tipos, estados, responsables y SLA. Se siembra VACIO a proposito: es una decision de servicios escolares.',
+        'Tipos de solicitud habilitados. PROPUESTA: tres tramites genericos con flujo ' +
+        'recibida -> en revision -> resuelta/rechazada.',
+      decision: 'D-01',
+    },
+    {
+      clave: 'solicitudes.sla_horas',
+      valor: '120',
+      descripcion: 'SLA por omision de cada tipo de solicitud, en horas.',
       decision: 'D-01',
     },
     {
       clave: 'perfil.campos_editables',
       valor: 'telefono',
-      descripcion: 'Campos que el titular puede modificar de su propio perfil.',
+      descripcion:
+        'Campos editables por el titular. La correccion de los demas entra por el tipo de ' +
+        'solicitud correccion-datos-perfil.',
       decision: 'D-02',
     },
     {
       clave: 'calificaciones.escala',
       valor: '0-100',
       descripcion:
-        'Escala y reglas de publicacion/correccion. No se codifica ninguna regla de aprobacion ni de redondeo.',
+        'Escala y reglas de publicacion/correccion. No se codifica regla de aprobacion, ' +
+        'redondeo ni ponderacion.',
       decision: 'D-03',
     },
     {
-      clave: 'periodo.autoridad_retroactiva',
-      valor: 'sin-designar',
+      clave: 'documentos.tipos_permitidos',
+      valor: 'application/pdf,image/jpeg,image/png',
+      descripcion: 'Formatos aceptados, verificados por magic bytes.',
+      decision: 'D-04',
+    },
+    {
+      clave: 'seguridad.umbrales_login',
+      valor: '5/15min-cuenta,20/15min-origen',
+      descripcion: 'Umbrales de limite de intentos. Requieren calibracion contra trafico real.',
+      decision: 'D-05',
+    },
+    {
+      clave: 'mfa.restablecimiento',
+      valor: 'presencial-doble-aprobacion',
       descripcion:
-        'Autoridad superior para cambios retroactivos. Mientras no se designe, el flujo queda bloqueado.',
+        'PROPUESTA: perdido el dispositivo Y los codigos, el restablecimiento exige solicitud ' +
+        'presencial con identificacion oficial y DOS aprobaciones administrativas distintas. ' +
+        'El restablecimiento NO otorga acceso: solo borra la credencial para que el titular ' +
+        'vuelva a enrolarse. Un rescate que diera acceso seria la via preferida para saltarse ' +
+        'el segundo factor.',
+      decision: 'D-06',
+    },
+    {
+      clave: 'mfa.proveedor',
+      valor: 'totp-propio',
+      descripcion: 'TOTP local con 10 codigos de recuperacion de un solo uso.',
+      decision: 'D-06',
+    },
+    {
+      clave: 'periodo.autoridad_retroactiva',
+      valor: 'rol:autoridad-academica',
+      descripcion:
+        'PROPUESTA: no se designa a una persona con poder para alterar el pasado. Se parte el ' +
+        'permiso en dos —autorizar y ejecutar— declarados incompatibles por RNFS-007, de modo ' +
+        'que un cambio retroactivo exige dos cuentas distintas y dos motivos escritos. Falta ' +
+        'designar QUIEN ocupa el rol autoridad-academica.',
+      decision: 'D-07',
+    },
+    {
+      clave: 'periodo.vigencia_autorizacion_horas',
+      valor: '24',
+      descripcion:
+        'Vigencia por omision de una autorizacion extraordinaria; maximo admitido 72 h. Una ' +
+        'autorizacion indefinida dejaria de ser excepcional.',
       decision: 'D-07',
     },
     {
@@ -399,24 +565,44 @@ async function main(): Promise<void> {
       clave: 'auditoria.retencion_dias',
       valor: '200',
       descripcion:
-        'Retencion minima de la bitacora. Un semestre completo, porque el fraude del escenario 5 se detecta tarde por naturaleza.',
+        'Retencion minima de la bitacora: un semestre completo, porque el fraude del ' +
+        'escenario 5 se detecta tarde por naturaleza.',
       decision: 'D-09',
+    },
+    {
+      clave: 'plataforma.sla',
+      valor: 'sin-definir',
+      descripcion:
+        'Volumen, concurrencia, RTO y RPO. Unica de las once para la que el equipo no puede ' +
+        'proponer nada: no hay cifras que estimar sin la institucion.',
+      decision: 'D-10',
+    },
+    {
+      clave: 'operacion.procedimiento_incidentes',
+      valor: 'docs/OPERACION.md',
+      descripcion: 'Procedimiento base escrito, pendiente de aprobar y de ensayar.',
+      decision: 'D-11',
     },
   ];
 
-  for (const p of pendientes) {
+  for (const parametro of parametros) {
     await prisma.parametroConfiguracion.upsert({
-      where: { clave: p.clave },
+      where: { clave: parametro.clave },
       create: {
-        clave: p.clave,
-        valor: p.valor,
-        descripcion: p.descripcion,
-        decisionId: p.decision,
+        clave: parametro.clave,
+        valor: parametro.valor,
+        descripcion: parametro.descripcion,
+        decisionId: parametro.decision,
+        // Sin firma. Es el punto entero de este bloque.
+        aprobadoPor: null,
+        aprobadoEl: null,
       },
-      update: { descripcion: p.descripcion, decisionId: p.decision },
+      update: { descripcion: parametro.descripcion, decisionId: parametro.decision },
     });
   }
-  console.log(`  ${pendientes.length} parametros pendientes de aprobacion`);
+
+  const bloqueantes = DECISIONES_BLOQUEANTES.join(', ');
+  console.log(`  ${parametros.length} parametros, ninguno aprobado todavia`);
 
   console.log(
     [
@@ -429,8 +615,10 @@ async function main(): Promise<void> {
       ' Son credenciales de DESARROLLO, documentadas en el README.',
       ' El arranque en produccion las rechaza (RNFS-058).',
       '',
-      ' Ningun tipo de solicitud fue sembrado: D-01 esta pendiente y',
-      ' el sistema no inventa reglas academicas.',
+      ' Los catalogos se sembraron como PROPUESTA, sin firma.',
+      ` Bloquean el arranque en produccion: ${bloqueantes}`,
+      '',
+      ' Revisalas en /panel/decisiones o en docs/DECISIONES-PENDIENTES.md.',
       '=================================================================',
       '',
     ].join('\n'),

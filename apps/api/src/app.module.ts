@@ -7,6 +7,7 @@ import { AuditoriaModule } from './auditoria/auditoria.module.js';
 import { PoliticaGuard } from './autorizacion/politica.guard.js';
 import { CalificacionesModule } from './calificaciones/calificaciones.module.js';
 import { ComunModule } from './comun/comun.module.js';
+import { ConfiguracionModule } from './configuracion/configuracion.module.js';
 import { DocumentosModule } from './documentos/documentos.module.js';
 import { IdentidadModule } from './identidad/identidad.module.js';
 import { NotificacionesModule } from './notificaciones/notificaciones.module.js';
@@ -29,6 +30,7 @@ import { UsuariosModule } from './usuarios/usuarios.module.js';
 @Module({
   imports: [
     ComunModule,
+    ConfiguracionModule,
     ScheduleModule.forRoot(),
     AuditoriaModule,
     NotificacionesModule,

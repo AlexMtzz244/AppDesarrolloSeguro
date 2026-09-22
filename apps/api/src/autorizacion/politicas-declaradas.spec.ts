@@ -4,6 +4,7 @@ import { AcademicoController } from '../academico/academico.controller.js';
 import { AlertasController } from '../alertas/alertas.controller.js';
 import { AuditoriaController } from '../auditoria/auditoria.controller.js';
 import { CalificacionesController } from '../calificaciones/calificaciones.controller.js';
+import { DecisionesController } from '../configuracion/decisiones.controller.js';
 import { DocumentosController } from '../documentos/documentos.controller.js';
 import { AutenticacionController } from '../identidad/autenticacion.controller.js';
 import { PerfilesController } from '../perfiles/perfiles.controller.js';
@@ -45,6 +46,7 @@ const CONTROLADORES = [
   SolicitudesController,
   AuditoriaController,
   AlertasController,
+  DecisionesController,
 ];
 
 interface RutaInspeccionada {

@@ -114,6 +114,7 @@ describe('coherencia de la matriz rol-permiso (SC-SRS-001 §6)', () => {
     'profesor:perfil',
     'jefe-carrera:perfil',
     'administrador:perfil',
+    'autoridad-academica:perfil',
     // El jefe de carrera crea y ajusta los grupos de SU programa: es
     // literalmente su atribucion (RF-023). El alcance no lo limita el permiso
     // sino el resolvedor `grupoDeMiPrograma`.

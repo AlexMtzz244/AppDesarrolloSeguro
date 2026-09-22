@@ -77,6 +77,7 @@ export const PERMISOS = [
   'periodo:crear',
   'periodo:modificar',
   'periodo:modificar-retroactivo',
+  'periodo:autorizar-retroactivo',
 
   'materia:leer',
   'materia:administrar',
@@ -120,6 +121,7 @@ export const ROLES_BASE = [
   'profesor',
   'jefe-carrera',
   'administrador',
+  'autoridad-academica',
 ] as const;
 
 export type RolBase = (typeof ROLES_BASE)[number];
@@ -200,6 +202,37 @@ export const MATRIZ_ROL_PERMISOS: Readonly<Record<RolBase, readonly Permiso[]>> 
     'auditoria:consultar',
     'alerta:consultar',
   ],
+  /**
+   * Autoridad academica (resuelve D-07).
+   *
+   * Existe para una sola cosa: **conceder** autorizaciones extraordinarias
+   * sobre periodos cerrados. No puede usarlas.
+   *
+   * Es la respuesta al problema que D-07 dejaba abierto. Designar a una
+   * persona con `periodo:modificar-retroactivo` habria creado una cuenta
+   * capaz de alterar el pasado por si sola, que es exactamente el tipo de
+   * concentracion de poder que SC-LAB-001 escenario 5 identifica como el
+   * riesgo. Partir el permiso en dos —autorizar y ejecutar— hace que **ningun
+   * actor individual pueda completar un cambio retroactivo**.
+   *
+   * Tambien consulta la auditoria, porque una autoridad que aprueba cambios
+   * sin poder revisar el historial aprueba a ciegas.
+   */
+  'autoridad-academica': [
+    'perfil:leer',
+    'perfil:modificar',
+    'programa:leer',
+    'periodo:leer',
+    'periodo:autorizar-retroactivo',
+    'grupo:leer',
+    'asignacion-docente:leer',
+    'calificacion:leer',
+    'documento:crear',
+    'solicitud:leer',
+    'solicitud:crear',
+    'auditoria:consultar',
+    'alerta:consultar',
+  ],
 };
 
 /**
@@ -225,6 +258,18 @@ export const PARES_INCOMPATIBLES: readonly (readonly [Permiso, Permiso])[] = [
   // operativa con la misma cuenta.
   ['rol:administrar', 'calificacion:crear'],
   ['rol:administrar', 'asignacion-docente:crear'],
+  // Quien AUTORIZA un cambio retroactivo no puede EJECUTARLO (D-07).
+  //
+  // Es el par mas importante de esta lista despues del primero. Sin el, la
+  // "autorizacion extraordinaria" seria una formalidad que el mismo actor se
+  // concede a si mismo, y el flujo excepcional valdria lo mismo que el
+  // ordinario. Con el, alterar un periodo cerrado exige forzosamente dos
+  // cuentas distintas y dos motivos escritos.
+  ['periodo:autorizar-retroactivo', 'periodo:modificar-retroactivo'],
+  // Y quien autoriza tampoco debe poder capturar o corregir calificaciones:
+  // el cambio retroactivo mas valioso de conseguir es justamente ese.
+  ['periodo:autorizar-retroactivo', 'calificacion:corregir'],
+  ['periodo:autorizar-retroactivo', 'calificacion:crear'],
 ];
 
 export interface ConflictoSeparacionFunciones {
@@ -260,6 +305,7 @@ export function detectarConflictosSeparacion(
  */
 export const ROLES_CON_MFA_OBLIGATORIO: readonly RolBase[] = [
   'administrador',
+  'autoridad-academica',
   'profesor',
   'jefe-carrera',
 ];
@@ -271,6 +317,7 @@ export const ROLES_CON_MFA_OBLIGATORIO: readonly RolBase[] = [
 export const PERMISOS_QUE_EXIGEN_MOTIVO: readonly Permiso[] = [
   'calificacion:corregir',
   'periodo:modificar-retroactivo',
+  'periodo:autorizar-retroactivo',
   'asignacion-docente:crear',
   'rol:administrar',
 ];
