@@ -1,0 +1,3 @@
+# Sistema academico interno: no debe indexarse.
+User-agent: *
+Disallow: /

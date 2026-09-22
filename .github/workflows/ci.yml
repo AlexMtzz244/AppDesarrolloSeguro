@@ -1,0 +1,142 @@
+name: CI
+
+# Secure SDLC, fase Pruebas. Cada paso corresponde a un requisito verificable
+# de SC-SRS-001, no a una buena practica generica.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  calidad:
+    name: Lint, tipos y pruebas unitarias
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  integracion:
+    name: Pruebas de integracion y casos negativos
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: securecampus_test
+          POSTGRES_USER: securecampus_owner
+          POSTGRES_PASSWORD: postgres_ci
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+        ports: ["5432:5432"]
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Preparar esquema y rol de aplicacion restringido
+        run: pnpm --filter api ci:preparar-bd
+        env:
+          DATABASE_URL_MIGRACIONES: postgresql://securecampus_owner:postgres_ci@localhost:5432/securecampus_test?schema=public
+          DATABASE_URL: postgresql://securecampus_app:postgres_ci_app@localhost:5432/securecampus_test?schema=public
+          POSTGRES_APP_USER: securecampus_app
+          POSTGRES_APP_PASSWORD: postgres_ci_app
+      # Aqui corren las 13 pruebas negativas obligatorias que no requieren
+      # navegador. Una falla en cualquiera bloquea el merge.
+      - run: pnpm test:int
+        env:
+          DATABASE_URL: postgresql://securecampus_app:postgres_ci_app@localhost:5432/securecampus_test?schema=public
+          DATABASE_URL_MIGRACIONES: postgresql://securecampus_owner:postgres_ci@localhost:5432/securecampus_test?schema=public
+          REDIS_URL: redis://localhost:6379
+
+  secretos:
+    name: Escaneo de secretos (historial completo)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # RNFS-053: el historial completo, no solo el ultimo commit. El hook
+          # local se puede omitir con --no-verify; este paso no.
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  dependencias:
+    name: Auditoria de dependencias y SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # RNFS-054: una vulnerabilidad critica rompe la build.
+      - name: Auditoria de dependencias
+        run: pnpm audit --audit-level=critical
+      # RNFS-055: sin inventario no se puede responder "usamos esa biblioteca,
+      # en que version y donde" el dia que salga el CVE (SC-LAB-003 §6).
+      - name: Generar SBOM
+        run: pnpm sbom
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 90
+
+  e2e:
+    name: E2E esenciales
+    runs-on: ubuntu-latest
+    needs: [calidad]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 14

@@ -1,0 +1,777 @@
+// =============================================================================
+// SecureCampus — modelo de datos
+//
+// Tres decisiones atraviesan todo el esquema y conviene enunciarlas antes de
+// leerlo, porque explican por que varias tablas tienen la forma que tienen:
+//
+// 1. Los identificadores publicos son ULID opacos. SC-LAB-001 §3 insiste en
+//    que esto NO es un control de acceso: dificulta la enumeracion, pero no
+//    impide el acceso a quien conozca el identificador. Es defensa en
+//    profundidad, nunca el reemplazo de la verificacion de propiedad.
+//
+// 2. Lo que necesita historia se modela como historia, no como campo
+//    actualizable. AsignacionDocente y Calificacion no se sobrescriben: se
+//    versionan. Si la historia fuera un anadido posterior, el periodo anterior
+//    simplemente no existiria (SC-LAB-002 §6.2).
+//
+// 3. EventoAuditoria es append-only. El modelo Prisma es solo la primera capa;
+//    el control real es el REVOKE de la migracion, porque la aplicacion se
+//    conecta con un rol que no tiene UPDATE ni DELETE sobre esa tabla.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // La aplicacion usa el rol restringido...
+  url       = env("DATABASE_URL")
+  // ...y `prisma migrate` usa el rol propietario. Si la app pudiera migrar,
+  // podria revertir el REVOKE que protege la bitacora (RNFS-031).
+  directUrl = env("DATABASE_URL_MIGRACIONES")
+}
+
+// =============================================================================
+// Identidad y autorizacion
+// =============================================================================
+
+model Usuario {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico         String    @unique @map("id_publico") @db.VarChar(26)
+  correo            String    @unique @db.VarChar(254)
+  contrasenaHash    String    @map("contrasena_hash") @db.VarChar(255)
+  activo            Boolean   @default(true)
+  // Al revocar todas las sesiones se avanza esta marca. Cualquier sesion
+  // emitida antes queda invalida sin necesidad de recorrerlas una por una
+  // (RNFS-014).
+  sesionesValidasDesde DateTime @default(now()) @map("sesiones_validas_desde") @db.Timestamptz(6)
+  creadoEl          DateTime  @default(now()) @map("creado_el") @db.Timestamptz(6)
+  actualizadoEl     DateTime  @updatedAt @map("actualizado_el") @db.Timestamptz(6)
+  desactivadoEl     DateTime? @map("desactivado_el") @db.Timestamptz(6)
+
+  perfil              Perfil?
+  credencialTotp      CredencialTotp?
+  sesiones            Sesion[]
+  asignacionesRol     AsignacionRol[]      @relation("AsignacionRolUsuario")
+  asignacionesOtorgadas AsignacionRol[]    @relation("AsignacionRolAutor")
+  tokensRecuperacion  TokenRecuperacion[]
+  codigosMfa          CodigoRecuperacionMfa[]
+  notificaciones      Notificacion[]
+  documentos          Documento[]          @relation("DocumentoTitular")
+  documentosSubidos   Documento[]          @relation("DocumentoSubidoPor")
+  solicitudes         Solicitud[]          @relation("SolicitudTitular")
+  inscripciones       Inscripcion[]
+  asignacionesDocente AsignacionDocente[]  @relation("AsignacionDocenteProfesor")
+  asignacionesCreadas AsignacionDocente[]  @relation("AsignacionDocenteAutor")
+  calificaciones      Calificacion[]       @relation("CalificacionEstudiante")
+  cuota               CuotaUsuario?
+  intentosAutenticacion IntentoAutenticacion[]
+
+  @@index([activo])
+  @@map("usuario")
+}
+
+model Perfil {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId      String   @unique @map("usuario_id") @db.Uuid
+  nombre         String   @db.VarChar(120)
+  apellidoPaterno String  @map("apellido_paterno") @db.VarChar(120)
+  apellidoMaterno String? @map("apellido_materno") @db.VarChar(120)
+  matricula      String?  @unique @db.VarChar(30)
+  telefono       String?  @db.VarChar(30)
+  // Programa de adscripcion. Para el jefe de carrera es lo que acota su
+  // alcance; sin este dato su rol seria global, que es la vulnerabilidad (c)
+  // del escenario 5 de SC-LAB-001.
+  programaId     String?  @map("programa_id") @db.Uuid
+  actualizadoEl  DateTime @updatedAt @map("actualizado_el") @db.Timestamptz(6)
+
+  usuario  Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  programa Programa? @relation(fields: [programaId], references: [id], onDelete: Restrict)
+
+  @@index([programaId])
+  @@map("perfil")
+}
+
+model Rol {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clave       String   @unique @db.VarChar(40)
+  nombre      String   @db.VarChar(120)
+  descripcion String   @db.VarChar(500)
+  esSistema   Boolean  @default(false) @map("es_sistema")
+  creadoEl    DateTime @default(now()) @map("creado_el") @db.Timestamptz(6)
+
+  permisos     RolPermiso[]
+  asignaciones AsignacionRol[]
+
+  @@map("rol")
+}
+
+model Permiso {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Formato `recurso:operacion`. Granular por operacion: un permiso de lectura
+  // nunca habilita escritura (RNFS-004).
+  clave       String   @unique @db.VarChar(60)
+  recurso     String   @db.VarChar(40)
+  operacion   String   @db.VarChar(40)
+  descripcion String   @db.VarChar(500)
+  exigeMotivo Boolean  @default(false) @map("exige_motivo")
+
+  roles RolPermiso[]
+
+  @@index([recurso])
+  @@map("permiso")
+}
+
+model RolPermiso {
+  rolId     String   @map("rol_id") @db.Uuid
+  permisoId String   @map("permiso_id") @db.Uuid
+  otorgadoEl DateTime @default(now()) @map("otorgado_el") @db.Timestamptz(6)
+
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+
+  @@id([rolId, permisoId])
+  @@map("rol_permiso")
+}
+
+/// Asignacion de un rol a un usuario, con vigencia, motivo y autor (RF-071).
+///
+/// No es una tabla de union simple a proposito. SC-LAB-001 escenario 4
+/// identifica "los permisos que se acumulan" como uno de los modos reales en
+/// que estos sistemas se degradan: los roles se otorgan y casi nunca se
+/// revocan. Una vigencia obligatoria convierte la revocacion en el estado por
+/// omision y el permiso permanente en la excepcion que alguien tuvo que
+/// decidir.
+model AsignacionRol {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico  String    @unique @map("id_publico") @db.VarChar(26)
+  usuarioId  String    @map("usuario_id") @db.Uuid
+  rolId      String    @map("rol_id") @db.Uuid
+  desdeEl    DateTime  @map("desde_el") @db.Timestamptz(6)
+  hastaEl    DateTime? @map("hasta_el") @db.Timestamptz(6)
+  motivo     String    @db.VarChar(500)
+  autorId    String    @map("autor_id") @db.Uuid
+  revisarEl  DateTime? @map("revisar_el") @db.Timestamptz(6)
+  revocadaEl DateTime? @map("revocada_el") @db.Timestamptz(6)
+  creadaEl   DateTime  @default(now()) @map("creada_el") @db.Timestamptz(6)
+
+  usuario Usuario @relation("AsignacionRolUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Restrict)
+  autor   Usuario @relation("AsignacionRolAutor", fields: [autorId], references: [id], onDelete: Restrict)
+
+  @@index([usuarioId, revocadaEl])
+  @@index([rolId])
+  @@map("asignacion_rol")
+}
+
+/// Sesion opaca y revocable (RNFS-011).
+///
+/// Se guarda el HASH del token, nunca el token. Si la base se filtra, no se
+/// obtienen sesiones utilizables — el mismo razonamiento que para las
+/// contrasenas y para los tokens de recuperacion.
+model Sesion {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico          String    @unique @map("id_publico") @db.VarChar(26)
+  usuarioId          String    @map("usuario_id") @db.Uuid
+  tokenHash          String    @unique @map("token_hash") @db.VarChar(64)
+  creadaEl           DateTime  @default(now()) @map("creada_el") @db.Timestamptz(6)
+  ultimaActividadEl  DateTime  @default(now()) @map("ultima_actividad_el") @db.Timestamptz(6)
+  expiraEl           DateTime  @map("expira_el") @db.Timestamptz(6)
+  revocadaEl         DateTime? @map("revocada_el") @db.Timestamptz(6)
+  motivoRevocacion   String?   @map("motivo_revocacion") @db.VarChar(120)
+  ip                 String?   @db.VarChar(45)
+  userAgent          String?   @map("user_agent") @db.VarChar(400)
+  // Huella del dispositivo, para detectar accesos desde equipos no habituales
+  // (RF-090, alerta `acceso-inusual`).
+  huellaDispositivo  String?   @map("huella_dispositivo") @db.VarChar(64)
+  mfaVerificada      Boolean   @default(false) @map("mfa_verificada")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, revocadaEl])
+  @@index([expiraEl])
+  @@map("sesion")
+}
+
+model CredencialTotp {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId       String    @unique @map("usuario_id") @db.Uuid
+  // Cifrado con AES-256-GCM usando MFA_CLAVE_CIFRADO (RNFS-017). El texto
+  // plano del secreto solo existe en memoria durante el alta.
+  secretoCifrado  String    @map("secreto_cifrado") @db.Text
+  nonce           String    @db.VarChar(32)
+  tagAutenticacion String   @map("tag_autenticacion") @db.VarChar(32)
+  activadaEl      DateTime? @map("activada_el") @db.Timestamptz(6)
+  desactivadaEl   DateTime? @map("desactivada_el") @db.Timestamptz(6)
+  creadaEl        DateTime  @default(now()) @map("creada_el") @db.Timestamptz(6)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("credencial_totp")
+}
+
+model CodigoRecuperacionMfa {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId  String    @map("usuario_id") @db.Uuid
+  // Hash, no el codigo. Un codigo de recuperacion es una credencial completa.
+  codigoHash String    @map("codigo_hash") @db.VarChar(255)
+  usadoEl    DateTime? @map("usado_el") @db.Timestamptz(6)
+  creadoEl   DateTime  @default(now()) @map("creado_el") @db.Timestamptz(6)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, usadoEl])
+  @@map("codigo_recuperacion_mfa")
+}
+
+/// Token de recuperacion — RF-010 reescrito (SC-SRS-001 §5).
+///
+/// Cada columna corresponde a una condicion que el requisito original omitia y
+/// que SC-LAB-003 §3 identifico: `tokenHash` (nunca el token en claro),
+/// `expiraEl` (vigencia, no siete dias), `usadoEl` (un solo uso) e
+/// `invalidadoPorId` (emitir uno nuevo invalida el anterior).
+model TokenRecuperacion {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId       String    @map("usuario_id") @db.Uuid
+  tokenHash       String    @unique @map("token_hash") @db.VarChar(64)
+  expiraEl        DateTime  @map("expira_el") @db.Timestamptz(6)
+  usadoEl         DateTime? @map("usado_el") @db.Timestamptz(6)
+  invalidadoEl    DateTime? @map("invalidado_el") @db.Timestamptz(6)
+  invalidadoPorId String?   @map("invalidado_por_id") @db.Uuid
+  ipSolicitud     String?   @map("ip_solicitud") @db.VarChar(45)
+  creadoEl        DateTime  @default(now()) @map("creado_el") @db.Timestamptz(6)
+
+  usuario       Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  invalidadoPor TokenRecuperacion?  @relation("CadenaInvalidacion", fields: [invalidadoPorId], references: [id], onDelete: SetNull)
+  invalidados   TokenRecuperacion[] @relation("CadenaInvalidacion")
+
+  @@index([usuarioId, usadoEl])
+  @@index([expiraEl])
+  @@map("token_recuperacion")
+}
+
+/// Registro de intentos de autenticacion, para limite y deteccion.
+///
+/// Redis lleva los contadores en caliente; esta tabla conserva la evidencia
+/// para investigar despues. Los contadores expiran, la evidencia no debe.
+model IntentoAutenticacion {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Nulo cuando el correo no corresponde a ninguna cuenta. Registrar el hecho
+  // sin inventar un usuario es lo que permite detectar enumeracion.
+  usuarioId  String?  @map("usuario_id") @db.Uuid
+  correo     String   @db.VarChar(254)
+  exitoso    Boolean
+  ip         String?  @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.VarChar(400)
+  creadoEl   DateTime @default(now()) @map("creado_el") @db.Timestamptz(6)
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([correo, creadoEl])
+  @@index([ip, creadoEl])
+  @@map("intento_autenticacion")
+}
+
+// =============================================================================
+// Auditoria — append-only
+// =============================================================================
+
+/// Bitacora inmutable (RNFS-030 a RNFS-033).
+///
+/// Prisma no puede expresar "solo insertar": el control vive en la migracion
+/// `20250101000002_auditoria_append_only`, que revoca UPDATE, DELETE y
+/// TRUNCATE al rol de aplicacion y agrega un trigger como segunda capa.
+///
+/// SC-LAB-001 escenario 4 lo justifica: si el atacante alcanza el privilegio
+/// administrativo, la bitacora es lo unico que queda, y solo sirve si el no
+/// puede editarla.
+model EventoAuditoria {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creadoEl      DateTime @default(now()) @map("creado_el") @db.Timestamptz(6)
+  actorId       String?  @map("actor_id") @db.Uuid
+  // Se desnormaliza el correo a proposito: si la cuenta se elimina o cambia de
+  // titular, el evento debe seguir diciendo quien lo hizo. Una bitacora que
+  // depende de un JOIN vivo pierde sentido con el tiempo.
+  actorCorreo   String?  @map("actor_correo") @db.VarChar(254)
+  accion        String   @db.VarChar(60)
+  tipoRecurso   String   @map("tipo_recurso") @db.VarChar(60)
+  recursoId     String?  @map("recurso_id") @db.VarChar(64)
+  resultado     String   @db.VarChar(20)
+  motivo        String?  @db.VarChar(500)
+  antes         Json?
+  despues       Json?
+  ip            String?  @db.VarChar(45)
+  userAgent     String?  @map("user_agent") @db.VarChar(400)
+  correlationId String   @map("correlation_id") @db.VarChar(64)
+
+  alertas Alerta[]
+
+  @@index([actorId, creadoEl])
+  @@index([tipoRecurso, recursoId])
+  @@index([accion, creadoEl])
+  @@index([resultado, creadoEl])
+  @@map("evento_auditoria")
+}
+
+model Alerta {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico          String    @unique @map("id_publico") @db.VarChar(26)
+  tipo               String    @db.VarChar(60)
+  severidad          String    @db.VarChar(20)
+  detalle            String    @db.VarChar(1000)
+  eventoAuditoriaId  String?   @map("evento_auditoria_id") @db.Uuid
+  sujetoId           String?   @map("sujeto_id") @db.Uuid
+  creadaEl           DateTime  @default(now()) @map("creada_el") @db.Timestamptz(6)
+  atendidaEl         DateTime? @map("atendida_el") @db.Timestamptz(6)
+  atendidaPorId      String?   @map("atendida_por_id") @db.Uuid
+  // Evita duplicar la misma alerta si la regla se evalua varias veces.
+  claveIdempotencia  String    @unique @map("clave_idempotencia") @db.VarChar(200)
+
+  evento EventoAuditoria? @relation(fields: [eventoAuditoriaId], references: [id], onDelete: SetNull)
+
+  @@index([tipo, creadaEl])
+  @@index([atendidaEl])
+  @@map("alerta")
+}
+
+model Notificacion {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico     String    @unique @map("id_publico") @db.VarChar(26)
+  destinatarioId String   @map("destinatario_id") @db.Uuid
+  tipo          String    @db.VarChar(60)
+  canal         String    @db.VarChar(20)
+  titulo        String    @db.VarChar(200)
+  cuerpo        String    @db.VarChar(2000)
+  estadoEntrega String    @default("pendiente") @map("estado_entrega") @db.VarChar(20)
+  intentos      Int       @default(0)
+  creadaEl      DateTime  @default(now()) @map("creada_el") @db.Timestamptz(6)
+  enviadaEl     DateTime? @map("enviada_el") @db.Timestamptz(6)
+  leidaEl       DateTime? @map("leida_el") @db.Timestamptz(6)
+  // Garantiza que un reintento de la cola no genere un duplicado (RF-091).
+  claveIdempotencia String @unique @map("clave_idempotencia") @db.VarChar(200)
+
+  destinatario Usuario @relation(fields: [destinatarioId], references: [id], onDelete: Cascade)
+
+  @@index([destinatarioId, leidaEl])
+  @@index([estadoEntrega])
+  @@map("notificacion")
+}
+
+// =============================================================================
+// Dominio academico
+// =============================================================================
+
+model Programa {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico String   @unique @map("id_publico") @db.VarChar(26)
+  clave     String   @unique @db.VarChar(20)
+  nombre    String   @db.VarChar(200)
+  activo    Boolean  @default(true)
+  creadoEl  DateTime @default(now()) @map("creado_el") @db.Timestamptz(6)
+
+  perfiles Perfil[]
+  materias Materia[]
+  grupos   Grupo[]
+
+  @@map("programa")
+}
+
+model Periodo {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico String    @unique @map("id_publico") @db.VarChar(26)
+  clave     String    @unique @db.VarChar(20)
+  inicia    DateTime  @db.Timestamptz(6)
+  termina   DateTime  @db.Timestamptz(6)
+  // Maquina de estados: abierto -> cerrado. El cierre no es solo una fecha; es
+  // un estado explicito, porque una comparacion de fechas dispersa por el
+  // codigo se olvida en algun sitio (RF-021, RF-033).
+  estado    String    @default("abierto") @db.VarChar(20)
+  cerradoEl DateTime? @map("cerrado_el") @db.Timestamptz(6)
+  creadoEl  DateTime  @default(now()) @map("creado_el") @db.Timestamptz(6)
+
+  grupos         Grupo[]
+  autorizaciones AutorizacionExtraordinaria[]
+
+  @@index([estado])
+  @@map("periodo")
+}
+
+/// Autorizacion superior para un cambio retroactivo (RF-033).
+///
+/// Se modela como entidad propia y no como una bandera en la peticion: una
+/// bandera la marca quien hace el cambio, una autorizacion la concede alguien
+/// mas, deja rastro y tiene vigencia. Mientras D-07 no designe a la autoridad
+/// superior, no se puede crear ninguna y el flujo queda bloqueado — que es el
+/// valor por defecto seguro.
+model AutorizacionExtraordinaria {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico   String    @unique @map("id_publico") @db.VarChar(26)
+  periodoId   String    @map("periodo_id") @db.Uuid
+  otorgadaPorId String  @map("otorgada_por_id") @db.Uuid
+  motivo      String    @db.VarChar(500)
+  vigenteHasta DateTime @map("vigente_hasta") @db.Timestamptz(6)
+  usadaEl     DateTime? @map("usada_el") @db.Timestamptz(6)
+  creadaEl    DateTime  @default(now()) @map("creada_el") @db.Timestamptz(6)
+
+  periodo Periodo @relation(fields: [periodoId], references: [id], onDelete: Cascade)
+
+  @@index([periodoId, usadaEl])
+  @@map("autorizacion_extraordinaria")
+}
+
+model Materia {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico  String   @unique @map("id_publico") @db.VarChar(26)
+  clave      String   @unique @db.VarChar(20)
+  nombre     String   @db.VarChar(200)
+  creditos   Int
+  programaId String   @map("programa_id") @db.Uuid
+  creadoEl   DateTime @default(now()) @map("creado_el") @db.Timestamptz(6)
+
+  programa Programa @relation(fields: [programaId], references: [id], onDelete: Restrict)
+  grupos   Grupo[]
+
+  @@index([programaId])
+  @@map("materia")
+}
+
+model Aula {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico String   @unique @map("id_publico") @db.VarChar(26)
+  clave     String   @unique @db.VarChar(20)
+  edificio  String   @db.VarChar(60)
+  capacidad Int
+  creadoEl  DateTime @default(now()) @map("creado_el") @db.Timestamptz(6)
+
+  grupos Grupo[]
+
+  @@map("aula")
+}
+
+model Grupo {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico  String   @unique @map("id_publico") @db.VarChar(26)
+  clave      String   @db.VarChar(20)
+  programaId String   @map("programa_id") @db.Uuid
+  materiaId  String   @map("materia_id") @db.Uuid
+  periodoId  String   @map("periodo_id") @db.Uuid
+  aulaId     String   @map("aula_id") @db.Uuid
+  cupo       Int
+  creadoEl   DateTime @default(now()) @map("creado_el") @db.Timestamptz(6)
+  actualizadoEl DateTime @updatedAt @map("actualizado_el") @db.Timestamptz(6)
+
+  programa     Programa            @relation(fields: [programaId], references: [id], onDelete: Restrict)
+  materia      Materia             @relation(fields: [materiaId], references: [id], onDelete: Restrict)
+  periodo      Periodo             @relation(fields: [periodoId], references: [id], onDelete: Restrict)
+  aula         Aula                @relation(fields: [aulaId], references: [id], onDelete: Restrict)
+  horario      BloqueHorario[]
+  inscripciones Inscripcion[]
+  asignaciones AsignacionDocente[]
+  calificaciones Calificacion[]
+
+  @@unique([clave, periodoId])
+  @@index([programaId, periodoId])
+  @@map("grupo")
+}
+
+model BloqueHorario {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  grupoId    String @map("grupo_id") @db.Uuid
+  dia        String @db.VarChar(12)
+  // Minutos desde medianoche. Guardar enteros en vez de texto es lo que
+  // permite que Postgres detecte los traslapes con una restriccion de
+  // exclusion en vez de confiar solo en la validacion de la aplicacion.
+  inicioMin  Int    @map("inicio_min")
+  finMin     Int    @map("fin_min")
+  // Copia del aula y el periodo del grupo, mantenida por un trigger.
+  // Una restriccion de exclusion solo puede mirar columnas de su propia tabla,
+  // y sin esta desnormalizacion el choque de aula habria que detectarlo en la
+  // aplicacion, donde dos peticiones concurrentes pasarian ambas la
+  // comprobacion previa. Es redundancia deliberada al servicio de una
+  // invariante que la aplicacion no puede garantizar sola.
+  aulaId     String? @map("aula_id") @db.Uuid
+  periodoId  String? @map("periodo_id") @db.Uuid
+
+  grupo Grupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@index([grupoId])
+  @@index([dia, inicioMin, finMin])
+  @@map("bloque_horario")
+}
+
+model Inscripcion {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico    String   @unique @map("id_publico") @db.VarChar(26)
+  grupoId      String   @map("grupo_id") @db.Uuid
+  estudianteId String   @map("estudiante_id") @db.Uuid
+  creadaEl     DateTime @default(now()) @map("creada_el") @db.Timestamptz(6)
+  bajaEl       DateTime? @map("baja_el") @db.Timestamptz(6)
+
+  grupo      Grupo   @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  estudiante Usuario @relation(fields: [estudianteId], references: [id], onDelete: Restrict)
+
+  @@unique([grupoId, estudianteId])
+  @@index([estudianteId, bajaEl])
+  @@map("inscripcion")
+}
+
+/// Asignacion docente versionada (RF-031).
+///
+/// Este modelo es, junto con EventoAuditoria, el nucleo del escenario 5 de
+/// SC-LAB-001. NO hay un campo `profesorId` en Grupo que se sobrescriba: cada
+/// cambio cierra una vigencia y abre otra fila, de modo que el paso intermedio
+/// —"me asigne, califique, reverti"— queda registrado.
+///
+/// El ataque de ese escenario no rompe ningun control: los usa. Cada
+/// verificacion responde correctamente y el resultado sigue siendo
+/// fraudulento, porque el dato sobre el que se apoya la verificacion era
+/// manipulable. Versionarlo es lo que lo hace visible.
+model AsignacionDocente {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico  String    @unique @map("id_publico") @db.VarChar(26)
+  grupoId    String    @map("grupo_id") @db.Uuid
+  profesorId String    @map("profesor_id") @db.Uuid
+  version    Int
+  desdeEl    DateTime  @map("desde_el") @db.Timestamptz(6)
+  hastaEl    DateTime? @map("hasta_el") @db.Timestamptz(6)
+  autorId    String    @map("autor_id") @db.Uuid
+  motivo     String    @db.VarChar(500)
+  creadaEl   DateTime  @default(now()) @map("creada_el") @db.Timestamptz(6)
+
+  grupo    Grupo   @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  profesor Usuario @relation("AsignacionDocenteProfesor", fields: [profesorId], references: [id], onDelete: Restrict)
+  autor    Usuario @relation("AsignacionDocenteAutor", fields: [autorId], references: [id], onDelete: Restrict)
+
+  @@unique([grupoId, version])
+  @@index([profesorId, hastaEl])
+  @@index([grupoId, hastaEl])
+  @@map("asignacion_docente")
+}
+
+// =============================================================================
+// Calificaciones
+// =============================================================================
+
+model Calificacion {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico     String   @unique @map("id_publico") @db.VarChar(26)
+  grupoId       String   @map("grupo_id") @db.Uuid
+  estudianteId  String   @map("estudiante_id") @db.Uuid
+  valor         Decimal  @db.Decimal(5, 2)
+  estado        String   @default("borrador") @db.VarChar(20)
+  versionActual Int      @default(1) @map("version_actual")
+  creadaEl      DateTime @default(now()) @map("creada_el") @db.Timestamptz(6)
+  actualizadaEl DateTime @updatedAt @map("actualizada_el") @db.Timestamptz(6)
+  publicadaEl   DateTime? @map("publicada_el") @db.Timestamptz(6)
+
+  grupo      Grupo                 @relation(fields: [grupoId], references: [id], onDelete: Restrict)
+  estudiante Usuario               @relation("CalificacionEstudiante", fields: [estudianteId], references: [id], onDelete: Restrict)
+  versiones  VersionCalificacion[]
+
+  @@unique([grupoId, estudianteId])
+  @@index([estudianteId])
+  @@index([estado])
+  @@map("calificacion")
+}
+
+/// Historial de una calificacion (RF-045).
+///
+/// Cada version conserva el valor anterior y el nuevo. Sin esto, "no existe
+/// forma de saber cual era la nota correcta ni cuantos registros fueron
+/// tocados, y la duda contamina el periodo completo" (SC-LAB-001 §5.5).
+model VersionCalificacion {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  calificacionId String   @map("calificacion_id") @db.Uuid
+  version        Int
+  valorAnterior  Decimal? @map("valor_anterior") @db.Decimal(5, 2)
+  valorNuevo     Decimal  @map("valor_nuevo") @db.Decimal(5, 2)
+  estadoAnterior String?  @map("estado_anterior") @db.VarChar(20)
+  estadoNuevo    String   @map("estado_nuevo") @db.VarChar(20)
+  autorId        String   @map("autor_id") @db.Uuid
+  motivo         String?  @db.VarChar(500)
+  creadaEl       DateTime @default(now()) @map("creada_el") @db.Timestamptz(6)
+
+  calificacion Calificacion @relation(fields: [calificacionId], references: [id], onDelete: Cascade)
+
+  @@unique([calificacionId, version])
+  @@index([autorId, creadaEl])
+  @@map("version_calificacion")
+}
+
+// =============================================================================
+// Documentos y solicitudes
+// =============================================================================
+
+model TipoDocumento {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico      String   @unique @map("id_publico") @db.VarChar(26)
+  clave          String   @unique @db.VarChar(60)
+  nombre         String   @db.VarChar(200)
+  // Lista blanca de tipos MIME reales, separada por comas. Configurable
+  // (D-04): no se codifica ningun catalogo academico.
+  mimesPermitidos String  @map("mimes_permitidos") @db.VarChar(500)
+  tamanoMaximoBytes BigInt @map("tamano_maximo_bytes")
+  activo         Boolean  @default(true)
+
+  documentos Documento[]
+
+  @@map("tipo_documento")
+}
+
+/// Documento con entrega privada (RNFS-040 a RNFS-046).
+///
+/// `claveObjeto` es aleatoria y no deriva de la matricula ni del nombre: el
+/// caso de SC-LAB-001 escenario 2 era `/uploads/constancia_2026_125.pdf`, un
+/// nombre que cualquiera puede adivinar. Aqui el nombre original sobrevive
+/// solo como metadato para mostrarlo al usuario.
+///
+/// El campo `estadoAntivirus` gobierna la entrega: mientras no sea `limpio`,
+/// el endpoint no sirve el archivo. `error-analisis` no cuenta como limpio.
+model Documento {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico       String   @unique @map("id_publico") @db.VarChar(26)
+  titularId       String   @map("titular_id") @db.Uuid
+  subidoPorId     String   @map("subido_por_id") @db.Uuid
+  tipoDocumentoId String   @map("tipo_documento_id") @db.Uuid
+  nombreOriginal  String   @map("nombre_original") @db.VarChar(255)
+  claveObjeto     String   @unique @map("clave_objeto") @db.VarChar(200)
+  bucket          String   @db.VarChar(80)
+  tipoMimeReal    String   @map("tipo_mime_real") @db.VarChar(120)
+  tamanoBytes     BigInt   @map("tamano_bytes")
+  sha256          String   @db.VarChar(64)
+  estadoAntivirus String   @default("pendiente") @map("estado_antivirus") @db.VarChar(20)
+  analizadoEl     DateTime? @map("analizado_el") @db.Timestamptz(6)
+  resultadoAnalisis String? @map("resultado_analisis") @db.VarChar(200)
+  subidoEl        DateTime @default(now()) @map("subido_el") @db.Timestamptz(6)
+  eliminadoEl     DateTime? @map("eliminado_el") @db.Timestamptz(6)
+
+  titular       Usuario       @relation("DocumentoTitular", fields: [titularId], references: [id], onDelete: Restrict)
+  subidoPor     Usuario       @relation("DocumentoSubidoPor", fields: [subidoPorId], references: [id], onDelete: Restrict)
+  tipoDocumento TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Restrict)
+  adjuntos      SolicitudAdjunto[]
+
+  @@index([titularId, eliminadoEl])
+  @@index([estadoAntivirus])
+  @@map("documento")
+}
+
+model CuotaUsuario {
+  usuarioId    String   @id @map("usuario_id") @db.Uuid
+  usadoBytes   BigInt   @default(0) @map("usado_bytes")
+  limiteBytes  BigInt   @map("limite_bytes")
+  actualizadoEl DateTime @updatedAt @map("actualizado_el") @db.Timestamptz(6)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("cuota_usuario")
+}
+
+/// Catalogo de tipos de solicitud, configurable (RF-063, D-01).
+///
+/// Vive en la base y no en el codigo porque es una decision de servicios
+/// escolares. El prompt maestro es explicito: no inventar reglas academicas
+/// fijas. Se siembra vacio.
+model TipoSolicitud {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico     String   @unique @map("id_publico") @db.VarChar(26)
+  clave         String   @unique @db.VarChar(60)
+  nombre        String   @db.VarChar(200)
+  descripcion   String   @db.VarChar(1000)
+  slaHoras      Int?     @map("sla_horas")
+  activo        Boolean  @default(true)
+
+  estados     EstadoSolicitud[]
+  solicitudes Solicitud[]
+
+  @@map("tipo_solicitud")
+}
+
+model EstadoSolicitud {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico       String  @unique @map("id_publico") @db.VarChar(26)
+  tipoSolicitudId String  @map("tipo_solicitud_id") @db.Uuid
+  clave           String  @db.VarChar(60)
+  nombre          String  @db.VarChar(200)
+  esInicial       Boolean @default(false) @map("es_inicial")
+  esFinal         Boolean @default(false) @map("es_final")
+  orden           Int
+
+  tipoSolicitud TipoSolicitud @relation(fields: [tipoSolicitudId], references: [id], onDelete: Cascade)
+  solicitudes   Solicitud[]
+  historial     HistorialSolicitud[]
+
+  @@unique([tipoSolicitudId, clave])
+  @@map("estado_solicitud")
+}
+
+model Solicitud {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idPublico       String   @unique @map("id_publico") @db.VarChar(26)
+  titularId       String   @map("titular_id") @db.Uuid
+  tipoSolicitudId String   @map("tipo_solicitud_id") @db.Uuid
+  estadoId        String   @map("estado_id") @db.Uuid
+  descripcion     String   @db.VarChar(2000)
+  responsableId   String?  @map("responsable_id") @db.Uuid
+  creadaEl        DateTime @default(now()) @map("creada_el") @db.Timestamptz(6)
+  actualizadaEl   DateTime @updatedAt @map("actualizada_el") @db.Timestamptz(6)
+  venceEl         DateTime? @map("vence_el") @db.Timestamptz(6)
+  cerradaEl       DateTime? @map("cerrada_el") @db.Timestamptz(6)
+
+  titular       Usuario              @relation("SolicitudTitular", fields: [titularId], references: [id], onDelete: Restrict)
+  tipoSolicitud TipoSolicitud        @relation(fields: [tipoSolicitudId], references: [id], onDelete: Restrict)
+  estado        EstadoSolicitud      @relation(fields: [estadoId], references: [id], onDelete: Restrict)
+  historial     HistorialSolicitud[]
+  adjuntos      SolicitudAdjunto[]
+
+  @@index([titularId, cerradaEl])
+  @@index([estadoId])
+  @@map("solicitud")
+}
+
+model HistorialSolicitud {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  solicitudId String   @map("solicitud_id") @db.Uuid
+  estadoId    String   @map("estado_id") @db.Uuid
+  autorId     String   @map("autor_id") @db.Uuid
+  comentario  String?  @db.VarChar(2000)
+  creadoEl    DateTime @default(now()) @map("creado_el") @db.Timestamptz(6)
+
+  solicitud Solicitud       @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  estado    EstadoSolicitud @relation(fields: [estadoId], references: [id], onDelete: Restrict)
+
+  @@index([solicitudId, creadoEl])
+  @@map("historial_solicitud")
+}
+
+model SolicitudAdjunto {
+  solicitudId String @map("solicitud_id") @db.Uuid
+  documentoId String @map("documento_id") @db.Uuid
+
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  documento Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  @@id([solicitudId, documentoId])
+  @@map("solicitud_adjunto")
+}
+
+// =============================================================================
+// Configuracion administrable
+// =============================================================================
+
+/// Parametros institucionales pendientes de aprobacion (SC-SRS-001 §8).
+///
+/// Existe para que ninguna de las once decisiones pendientes termine como una
+/// constante escondida en el codigo. "Codificar un valor inventado no lo
+/// convierte en decidido, lo convierte en invisible, que es peor."
+model ParametroConfiguracion {
+  clave         String   @id @db.VarChar(80)
+  valor         String   @db.VarChar(2000)
+  descripcion   String   @db.VarChar(1000)
+  decisionId    String?  @map("decision_id") @db.VarChar(10)
+  aprobadoPor   String?  @map("aprobado_por") @db.VarChar(200)
+  aprobadoEl    DateTime? @map("aprobado_el") @db.Timestamptz(6)
+  actualizadoEl DateTime @updatedAt @map("actualizado_el") @db.Timestamptz(6)
+
+  @@map("parametro_configuracion")
+}

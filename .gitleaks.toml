@@ -1,0 +1,46 @@
+# Configuracion de gitleaks — RNFS-053.
+#
+# SC-LAB-002 escenario B: el hook de pre-commit vive en la maquina del
+# desarrollador, que es exactamente donde no tenemos garantia de que este
+# instalado. Por eso el mismo escaneo se repite en CI sobre el historial
+# completo, no solo sobre el ultimo commit.
+
+title = "SecureCampus"
+
+[extend]
+useDefault = true
+
+# --- Reglas propias --------------------------------------------------------
+
+[[rules]]
+id = "securecampus-variable-env-con-valor"
+description = "Variable de entorno sensible con un valor asignado"
+regex = '''(?i)^\s*(POSTGRES_PASSWORD|POSTGRES_APP_PASSWORD|S3_SECRET_ACCESS_KEY|SESION_SECRETO_FIRMA|MFA_CLAVE_CIFRADO|CAPTCHA_SECRETO)\s*=\s*\S+'''
+path = '''(?i)\.env'''
+tags = ["secreto", "entorno"]
+
+[[rules]]
+id = "securecampus-url-postgres-con-credencial"
+description = "Cadena de conexion de Postgres con contrasena embebida"
+regex = '''postgres(ql)?://[^:\s]+:[^@\s]+@'''
+tags = ["secreto", "base-de-datos"]
+
+# --- Exclusiones -----------------------------------------------------------
+
+[allowlist]
+description = "Rutas y patrones que no son secretos reales"
+
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)pnpm-lock\.yaml$''',
+  '''(^|/)docs/''',
+  '''(^|/)\.gitleaks\.toml$''',
+]
+
+regexes = [
+  # La plantilla declara los nombres de variable con el valor VACIO a proposito.
+  '''^\s*[A-Z_0-9]+=\s*$''',
+  # Credenciales de las semillas de desarrollo: documentadas, no reales, y el
+  # arranque en produccion las rechaza (RNFS-058).
+  '''SemillaDesarrollo!''',
+]

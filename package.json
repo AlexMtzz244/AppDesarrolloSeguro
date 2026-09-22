@@ -1,0 +1,44 @@
+{
+  "name": "securecampus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SecureCampus — plataforma web academica segura (curso Desarrollo Seguro)",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@10.28.1",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "build": "pnpm --filter \"./packages/*\" build && pnpm --filter \"./apps/*\" build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:int": "pnpm --filter api test:int",
+    "e2e": "pnpm --filter web e2e",
+    "db:migrate": "pnpm --filter api db:migrate",
+    "db:seed": "pnpm --filter api db:seed",
+    "db:reset": "pnpm --filter api db:reset",
+    "sbom": "cyclonedx-npm --output-format JSON --output-file sbom.json --ignore-npm-errors",
+    "secrets:scan": "gitleaks detect --source . --redact --verbose",
+    "secrets:staged": "gitleaks protect --staged --redact --verbose",
+    "prepare": "husky"
+  },
+  "pnpm": {
+    "//": "Lista blanca explicita de paquetes que pueden ejecutar scripts de instalacion. Por omision pnpm los bloquea todos, que es el comportamiento seguro frente a un ataque de cadena de suministro por postinstall. Cada entrada aqui es una decision consciente, no un permiso global.",
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "esbuild",
+      "msgpackr-extract",
+      "unrs-resolver"
+    ]
+  },
+  "devDependencies": {
+    "@cyclonedx/cyclonedx-npm": "^4.0.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  }
+}

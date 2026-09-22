@@ -1,0 +1,36 @@
+#!/bin/sh
+# =============================================================================
+# Control temprano del escenario B de SC-LAB-002.
+#
+# Cuesta segundos y evita una rotacion de emergencia. Si el token llega al
+# repositorio remoto se debe asumir comprometido: reescribir el historial no lo
+# borra de los clones ajenos, de los forks, de las caches del proveedor ni de
+# los bots que escanean GitHub en tiempo real. Lo unico que cierra el problema
+# es rotar el secreto.
+#
+# Este hook NO es suficiente por si solo: se puede omitir con --no-verify y no
+# todos los integrantes lo tendran instalado. Por eso CI repite el escaneo
+# sobre el historial completo (.github/workflows/ci.yml).
+# =============================================================================
+
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "» Escaneando secretos en el area de preparacion..."
+  if ! gitleaks protect --staged --redact --config .gitleaks.toml; then
+    echo ""
+    echo "COMMIT ABORTADO: se detecto un posible secreto."
+    echo ""
+    echo "Si es un secreto real:"
+    echo "  1. Sacalo del codigo y muevelo a .env (que esta en .gitignore)."
+    echo "  2. Si ya se habia usado en algun lado, ROTALO."
+    echo "Si es un falso positivo, agrega la excepcion en .gitleaks.toml"
+    echo "explicando por que no es un secreto."
+    exit 1
+  fi
+else
+  echo "AVISO: gitleaks no esta instalado; el escaneo local se omitio."
+  echo "       Instalalo con:  winget install gitleaks"
+  echo "       CI lo ejecutara de todos modos y bloqueara el merge."
+fi
+
+echo "» Verificando tipos y formato..."
+pnpm -r --if-present typecheck

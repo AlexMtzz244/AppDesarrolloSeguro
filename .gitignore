@@ -1,2 +1,46 @@
 # Archivos temporales de Microsoft Office (se crean al abrir un documento)
 ~$*
+
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Secretos — RNFS-052 / SC-LAB-002 escenario B.
+# El unico archivo de entorno que se versiona es la plantilla sin valores.
+.env
+.env.*
+!.env.example
+
+# Artefactos de compilacion
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Pruebas y cobertura
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# Cadena de suministro
+sbom.json
+sbom.xml
+
+# Prisma
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
