@@ -278,7 +278,9 @@ OTEL_HABILITADO=false
 NEXT_PUBLIC_API_URL=http://localhost:3001
 "@
 
-    Set-Content -Path $rutaEnv -Value $contenido -Encoding utf8
+    # Sin BOM: `Set-Content -Encoding utf8` de PowerShell 5.1 lo antepone, y
+    # `source .env` en bash lo lee como parte de la primera linea.
+    [System.IO.File]::WriteAllText($rutaEnv, $contenido, (New-Object System.Text.UTF8Encoding $false))
     Ok '.env generado con secretos nuevos'
     Detalle 'Contrasenas en hexadecimal (van dentro de DATABASE_URL).'
     Detalle 'Secretos de sesion y MFA de 32 bytes en base64.'

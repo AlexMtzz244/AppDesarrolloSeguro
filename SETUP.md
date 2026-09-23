@@ -12,7 +12,7 @@ ellos dan mensajes de error que apuntan al lugar equivocado.
 
 ```powershell
 git clone <url-del-repositorio>
-cd proyDesSeguro
+cd AppDesarrolloSeguro
 .\scripts\setup.ps1
 ```
 
