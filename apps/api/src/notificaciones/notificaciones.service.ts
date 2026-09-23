@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Inject, Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import type { Redis } from 'ioredis';
@@ -6,7 +7,14 @@ import type { CanalNotificacion, TipoNotificacion } from '@securecampus/contract
 import { PrismaService } from '../comun/prisma.service.js';
 import { TOKEN_REDIS } from '../comun/redis.provider.js';
 
-export const COLA_NOTIFICACIONES = 'sc:notificaciones';
+/**
+ * BullMQ v5 rechaza los dos puntos en el nombre de una cola, porque es el
+ * separador con el que construye sus claves de Redis. El espacio de nombres
+ * que buscaba el prefijo `sc:` se declara con la opcion `prefix`, que es donde
+ * BullMQ lo espera; las claves resultantes son las mismas.
+ */
+export const COLA_NOTIFICACIONES = 'notificaciones';
+export const PREFIJO_COLAS = 'sc';
 
 export interface SolicitudNotificacion {
   readonly destinatarioId: string;
@@ -56,6 +64,7 @@ export class NotificacionesService implements OnModuleDestroy {
   ) {
     this.cola = new Queue<SolicitudNotificacion>(COLA_NOTIFICACIONES, {
       connection: redis,
+      prefix: PREFIJO_COLAS,
       defaultJobOptions: {
         attempts: 5,
         backoff: { type: 'exponential', delay: 2_000 },
@@ -99,9 +108,18 @@ export class NotificacionesService implements OnModuleDestroy {
       },
     });
 
-    await this.cola.add(solicitud.tipo, solicitud, {
-      jobId: solicitud.claveIdempotencia,
-    });
+    // BullMQ tampoco admite dos puntos en el `jobId`, por la misma razon que no
+    // los admite en el nombre de la cola: construye sus claves de Redis con
+    // ese separador. Las claves de idempotencia del dominio si los usan
+    // (`recuperacion-solicitud:<id>:<fecha>`) y no tiene sentido deformarlas
+    // para acomodar a la libreria de colas.
+    //
+    // El hash resuelve ambos lados: es estable, no contiene separadores, y
+    // conserva la propiedad que importa —la misma clave produce el mismo
+    // identificador— que es lo que hace que reencolar no duplique el envio.
+    const jobId = createHash('sha256').update(solicitud.claveIdempotencia).digest('hex');
+
+    await this.cola.add(solicitud.tipo, solicitud, { jobId });
   }
 
   async onModuleDestroy(): Promise<void> {

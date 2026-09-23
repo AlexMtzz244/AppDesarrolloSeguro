@@ -5,7 +5,11 @@ import nodemailer, { type Transporter } from 'nodemailer';
 import { PrismaService } from '../comun/prisma.service.js';
 import { TOKEN_REDIS } from '../comun/redis.provider.js';
 import { TOKEN_ENTORNO, type Entorno } from '../config/entorno.js';
-import { COLA_NOTIFICACIONES, type SolicitudNotificacion } from './notificaciones.service.js';
+import {
+  COLA_NOTIFICACIONES,
+  PREFIJO_COLAS,
+  type SolicitudNotificacion,
+} from './notificaciones.service.js';
 
 /**
  * Consumidor de la cola de notificaciones.
@@ -37,7 +41,7 @@ export class NotificacionesWorker implements OnModuleInit, OnModuleDestroy {
     this.worker = new Worker<SolicitudNotificacion>(
       COLA_NOTIFICACIONES,
       async (job) => this.procesar(job.data),
-      { connection: this.redis, concurrency: 5 },
+      { connection: this.redis, concurrency: 5, prefix: PREFIJO_COLAS },
     );
 
     this.worker.on('failed', (job, error) => {

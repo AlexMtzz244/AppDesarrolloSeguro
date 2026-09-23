@@ -111,14 +111,23 @@ describe('auditoria append-only y atomicidad', () => {
   });
 
   it('12. la API no expone ninguna ruta de escritura sobre auditoria (RF-081)', async () => {
-    const intentos = [
-      request(app.getHttpServer()).post('/api/auditoria').set('Cookie', cookieAdmin).send({}),
-      request(app.getHttpServer()).patch('/api/auditoria/1').set('Cookie', cookieAdmin).send({}),
-      request(app.getHttpServer()).delete('/api/auditoria/1').set('Cookie', cookieAdmin),
+    // Cada peticion se construye y se espera dentro del bucle. Creando las tres
+    // por adelantado, supertest abre un puerto efimero con la primera y lo
+    // cierra al responder, de modo que las siguientes fallan con ECONNREFUSED
+    // antes de tocar la API: la prueba se pondria roja sin haber comprobado
+    // nada sobre las rutas.
+    const intentos: Array<() => request.Test> = [
+      () => request(app.getHttpServer()).post('/api/auditoria').set('Cookie', cookieAdmin).send({}),
+      () =>
+        request(app.getHttpServer())
+          .patch('/api/auditoria/1')
+          .set('Cookie', cookieAdmin)
+          .send({}),
+      () => request(app.getHttpServer()).delete('/api/auditoria/1').set('Cookie', cookieAdmin),
     ];
 
     for (const intento of intentos) {
-      const respuesta = await intento;
+      const respuesta = await intento();
       expect([403, 404, 405]).toContain(respuesta.status);
     }
   });
@@ -311,8 +320,13 @@ describe('auditoria append-only y atomicidad', () => {
 
     const despues = await request(app.getHttpServer()).get('/api/auth/yo').set('Cookie', cookie);
 
-    // La sesion sigue viva pero sin ningun permiso: la caducidad es parte de
-    // la consulta, no un proceso aparte que pueda fallar.
-    expect(despues.status).toBe(401);
+    // La caducidad es parte de la consulta, no un proceso aparte que pueda
+    // fallar: el acceso se corta en la peticion siguiente, sin revocacion.
+    //
+    // El codigo es 403 y no 401 porque la sesion SIGUE siendo valida: el
+    // usuario esta autenticado, lo que perdio son los permisos. Devolver 401
+    // afirmaria que sus credenciales no sirven, y eso lo mandaria a iniciar
+    // sesion de nuevo para volver a encontrarse exactamente igual.
+    expect(despues.status).toBe(403);
   });
 });

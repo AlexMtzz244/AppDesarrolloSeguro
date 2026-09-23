@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { fileTypeFromBuffer } from 'file-type';
 import { ulid } from 'ulid';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import type { Actor } from '../autorizacion/actor.js';
@@ -9,6 +8,50 @@ import { AccesoDenegado, ErrorNegocio } from '../comun/excepciones.filter.js';
 import { PrismaService } from '../comun/prisma.service.js';
 import { AlmacenamientoService } from './almacenamiento.service.js';
 import { AntivirusService } from './antivirus.service.js';
+
+/**
+ * `file-type` v19 es un paquete ESM puro: su `exports` solo declara la
+ * condicion `import`. Cargarlo obliga a atender dos entornos que resuelven
+ * `import()` de forma distinta, y ninguna de las dos soluciones sirve sola:
+ *
+ *   - En produccion el codigo se compila a CommonJS con `tsc`, que degrada
+ *     `await import()` a `require()`. El paquete entonces falla con
+ *     ERR_PACKAGE_PATH_NOT_EXPORTED. Ahi hace falta un `import()` que el
+ *     compilador no vea, y por eso el indirecto con `Function`.
+ *
+ *   - En las pruebas, SWC conserva los modulos como ESM y vitest los evalua en
+ *     un contexto `vm` que NO tiene callback de import dinamico: ahi el
+ *     indirecto con `Function` es justamente lo que falla ("A dynamic import
+ *     callback was not specified"), mientras que el `import()` normal funciona.
+ *
+ * Se intenta primero la via directa y se recurre al indirecto solo cuando el
+ * compilador la convirtio en `require`. El orden importa: es el entorno de
+ * pruebas el que no admite alternativa.
+ *
+ * El modulo se memoriza porque la deteccion de tipo real corre en cada subida
+ * (RNFS-044) y resolverlo una vez basta.
+ */
+const importarEsm = new Function(
+  'especificador',
+  'return import(especificador)',
+) as (especificador: string) => Promise<typeof import('file-type')>;
+
+let moduloFileType: typeof import('file-type') | undefined;
+
+async function cargarFileType(): Promise<typeof import('file-type')> {
+  if (moduloFileType) return moduloFileType;
+  try {
+    moduloFileType = await import('file-type');
+  } catch {
+    moduloFileType = await importarEsm('file-type');
+  }
+  return moduloFileType;
+}
+
+async function fileTypeFromBuffer(buffer: Buffer) {
+  const modulo = await cargarFileType();
+  return modulo.fileTypeFromBuffer(buffer);
+}
 
 export interface ArchivoEntrante {
   readonly buffer: Buffer;

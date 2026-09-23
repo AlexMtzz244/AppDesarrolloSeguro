@@ -219,14 +219,25 @@ describe('identidad, sesion y recuperacion', () => {
       titular = await crearUsuario(prisma, correoRecuperacion, 'estudiante');
     });
 
-    /** Emite un token real y devuelve su valor en claro. */
-    async function emitirToken(opciones: { expiraEn?: number } = {}): Promise<string> {
+    /**
+     * Emite un token real y devuelve su valor en claro.
+     *
+     * Admite un titular distinto del compartido porque cada token insertado
+     * cuenta contra `RECUPERACION_MAX_SOLICITUDES_HORA`, que el servicio mide
+     * contando filas de la ultima hora. Una prueba que necesite que
+     * `solicitar` llegue a emitir de verdad tiene que partir de una cuenta con
+     * el contador en cero, o el limite la cortara en silencio —que es el
+     * comportamiento correcto del servicio, no un fallo suyo—.
+     */
+    async function emitirToken(
+      opciones: { expiraEn?: number; usuario?: UsuarioDePrueba } = {},
+    ): Promise<string> {
       const token = randomBytes(32).toString('base64url');
       const expiraEl = new Date(Date.now() + (opciones.expiraEn ?? 20 * 60_000));
 
       await prisma.tokenRecuperacion.create({
         data: {
-          usuarioId: titular.id,
+          usuarioId: (opciones.usuario ?? titular).id,
           tokenHash: createHash('sha256').update(token).digest('hex'),
           expiraEl,
         },
@@ -290,12 +301,17 @@ describe('identidad, sesion y recuperacion', () => {
     });
 
     it('emitir un token nuevo invalida el anterior (RNFS-023)', async () => {
-      const anterior = await emitirToken();
+      // Cuenta propia: el contador de solicitudes por hora de `titular` ya
+      // esta agotado por las pruebas anteriores, y con el agotado `solicitar`
+      // no emite nada, asi que no habria invalidacion que observar.
+      const correoAislado = 'recupera.aislado@prueba.edu.mx';
+      const propio = await crearUsuario(prisma, correoAislado, 'estudiante');
+      const anterior = await emitirToken({ usuario: propio });
 
       // Pasa por el flujo real, que es el que encadena la invalidacion.
       await request(app.getHttpServer())
         .post('/api/auth/recuperacion/solicitar')
-        .send({ correo: correoRecuperacion });
+        .send({ correo: correoAislado });
 
       const respuesta = await request(app.getHttpServer())
         .post('/api/auth/recuperacion/completar')

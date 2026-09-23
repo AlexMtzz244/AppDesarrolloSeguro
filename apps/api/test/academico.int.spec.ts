@@ -501,7 +501,16 @@ describe('dominio academico y calificaciones', () => {
         select: { version: true, profesorId: true, desdeEl: true, hastaEl: true, autorId: true },
       });
 
-      expect(versiones.length).toBeGreaterThanOrEqual(3);
+      // Dos versiones, no tres: el montaje crea la asignacion original y el
+      // ataque agrega la suya (la prueba anterior lo fija en `antes + 1`). La
+      // reversion CIERRA la vigente y no abre ninguna, que es coherente con la
+      // asercion de mas arriba de que no queda ninguna asignacion vigente.
+      //
+      // Lo que la prueba defiende no es el numero de filas sino que ninguna se
+      // pierda ni se sobrescriba: las dos siguen ahi, con autor, y el cierre
+      // deja su propio evento. El ataque termina sin rastro en el estado y con
+      // rastro completo en el historial, que es el escenario 5 de SC-LAB-001.
+      expect(versiones.length).toBeGreaterThanOrEqual(2);
       for (const version of versiones) {
         expect(version.autorId).toBeTruthy();
       }

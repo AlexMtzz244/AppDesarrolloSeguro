@@ -66,14 +66,26 @@ export const Boton = React.forwardRef<HTMLButtonElement, PropsBoton>(
         disabled={props.disabled ?? cargando}
         {...props}
       >
-        {cargando ? (
+        {/* Con `asChild` el hijo se entrega TAL CUAL. `Slot` exige un unico
+            elemento, y el `null` del indicador de carga ya cuenta como un
+            segundo hijo: bastaba eso para que el render fallara con "Slot
+            failed to slot onto its children" y se cayera la compilacion de la
+            pagina. Ademas el indicador no tendria donde dibujarse, porque en
+            ese modo quien renderiza es el hijo. */}
+        {asChild ? (
+          children
+        ) : (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            {/* El estado de carga se anuncia, no solo se dibuja. */}
-            <span className="sr-only">Procesando</span>
+            {cargando ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                {/* El estado de carga se anuncia, no solo se dibuja. */}
+                <span className="sr-only">Procesando</span>
+              </>
+            ) : null}
+            {children}
           </>
-        ) : null}
-        {children}
+        )}
       </Comp>
     );
   },

@@ -47,7 +47,7 @@ services:
   # la entrega siempre pasa por el endpoint de la API, que autoriza antes de
   # leer el objeto (RNFS-040, RNFS-042).
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
@@ -66,7 +66,7 @@ services:
 
   # Crea los buckets privados una sola vez y termina.
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:latest
     depends_on:
       minio:
         condition: service_healthy

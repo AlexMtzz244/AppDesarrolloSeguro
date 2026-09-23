@@ -69,20 +69,23 @@ encadenar el ataque del escenario 5.
 
 ### Pasos
 
-```bash
-pnpm install
-
-cp .env.example .env
-# Genera los secretos y complétalos en .env:
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-
-docker compose up -d
-
-pnpm --filter api db:deploy    # migraciones
-pnpm --filter api db:seed      # datos de desarrollo
-
-pnpm dev
+```powershell
+.\scripts\setup.ps1
 ```
+
+Comprueba requisitos, genera el `.env` con secretos nuevos, levanta la
+infraestructura, migra, siembra y arranca. **[SETUP.md](SETUP.md)** explica los
+pasos manuales equivalentes y qué hacer cuando algo falla.
+
+Dos cosas que conviene saber antes de hacerlo a mano:
+
+- **Nada carga el `.env` por ti.** La API lee `process.env` directamente y
+  Prisma busca su `.env` en `apps/api/`, no en la raíz. Dentro de Docker lo
+  resuelve `env_file`; en el host hay que cargarlo en cada terminal
+  ([SETUP.md §4](SETUP.md#4-cargar-el-env-en-tu-terminal)).
+- **`docker compose up -d` a secas levanta también `api` y `web`**, que publican
+  los puertos 3000 y 3001. Si después ejecutas `pnpm dev`, los puertos chocan.
+  Levanta solo los servicios de datos, o no ejecutes `pnpm dev`.
 
 | Servicio | URL |
 |---|---|
