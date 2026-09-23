@@ -299,7 +299,7 @@ D-01, D-06, D-07, D-10.
 
 También es correcto. El sistema funciona con los valores propuestos, pero los
 mantiene visibles en `/panel/decisiones` y el arranque en producción los exigirá
-firmados. Ver [docs/DECISIONES-PENDIENTES.md](docs/DECISIONES-PENDIENTES.md).
+firmados. Ver [docs/DECISIONES-PENDIENTES.md](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/DECISIONES-PENDIENTES.md).
 
 ### Subir un documento falla justo después de instalar
 

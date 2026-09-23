@@ -156,7 +156,7 @@ export const CATALOGO_DECISIONES: Readonly<Record<IdDecision, Decision>> = {
     apruebaArea: 'Dirección de TI',
     bloqueaProduccion: false,
     propuesta:
-      'Procedimiento base en docs/OPERACION.md, pendiente de aprobar y de ensayar. ' +
+      'Procedimiento base en proyDesSeguro/docs/OPERACION.md, pendiente de aprobar y de ensayar. ' +
       'Últimas dos versiones de navegadores con motor Chromium, Firefox y WebKit.',
   },
 };

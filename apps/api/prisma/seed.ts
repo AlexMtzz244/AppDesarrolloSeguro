@@ -579,7 +579,7 @@ async function main(): Promise<void> {
     },
     {
       clave: 'operacion.procedimiento_incidentes',
-      valor: 'docs/OPERACION.md',
+      valor: 'proyDesSeguro/docs/OPERACION.md',
       descripcion: 'Procedimiento base escrito, pendiente de aprobar y de ensayar.',
       decision: 'D-11',
     },
@@ -618,7 +618,7 @@ async function main(): Promise<void> {
       ' Los catalogos se sembraron como PROPUESTA, sin firma.',
       ` Bloquean el arranque en produccion: ${bloqueantes}`,
       '',
-      ' Revisalas en /panel/decisiones o en docs/DECISIONES-PENDIENTES.md.',
+      ' Revisalas en /panel/decisiones o en proyDesSeguro/docs/DECISIONES-PENDIENTES.md.',
       '=================================================================',
       '',
     ].join('\n'),

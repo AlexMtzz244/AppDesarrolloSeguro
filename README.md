@@ -25,11 +25,23 @@ prueban**.
 | **Docente** | Isc. Marelis Carrillo Lara |
 | **Ciclo** | Septiembre 2026 |
 
+## Los dos repositorios
+
+El proyecto se reparte en dos repositorios con propósitos separados:
+
+| Repositorio | Contiene |
+|---|---|
+| **AppDesarrolloSeguro** (este) | El código de la aplicación: API, web, contratos, infraestructura y CI. |
+| [**proyDesSeguro**](https://github.com/AlexMtzz244/proyDesSeguro) | La documentación del curso: manuales Word de las prácticas, los análisis SC-LAB / SC-SRS, los ADR, las decisiones pendientes y el manual de operación. |
+
+Los enlaces a documentos que aparecen más abajo apuntan al repositorio de
+documentación.
+
 ---
 
 ## La idea que atraviesa todo el proyecto
 
-De [SC-LAB-001 §1](docs/security/SC-LAB-001-analisis-inicial.md):
+De [SC-LAB-001 §1](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/security/SC-LAB-001-analisis-inicial.md):
 
 > En los cuatro roles el alcance no está definido por el rol solamente, sino
 > por la **relación entre el usuario y el recurso concreto** (mi perfil, mi
@@ -141,16 +153,12 @@ pnpm sbom          # Inventario de dependencias (CycloneDX)
 ## Estructura
 
 ```
-proyDesSeguro/
+AppDesarrolloSeguro/
 ├── apps/api/              NestJS · Prisma · autorización, auditoría, dominio
 ├── apps/web/              Next.js App Router · Tailwind · Radix
 ├── packages/contracts/    Permisos y esquemas Zod compartidos
 ├── infra/postgres/init/   Rol de aplicación con privilegio mínimo
-└── docs/
-    ├── security/          SC-LAB-001..003 y SC-SRS-001
-    ├── adr/               ADR-001..008
-    ├── DECISIONES-PENDIENTES.md
-    └── OPERACION.md
+└── scripts/               Preparación del entorno de desarrollo
 ```
 
 ### Dónde están los controles principales
@@ -178,32 +186,32 @@ proyDesSeguro/
 
 | Práctica | Pregunta que responde | Documento |
 |---|---|---|
-| **SC-LAB-001** | ¿Qué puede salir mal? | [Análisis inicial](docs/security/SC-LAB-001-analisis-inicial.md) |
-| **SC-LAB-002** | ¿En qué fase se actúa? | [Mapa Secure SDLC](docs/security/SC-LAB-002-secure-sdlc-map.md) |
-| **SC-LAB-003** | ¿Qué cuesta descubrirlo tarde? | [Costo y Shift Left](docs/security/SC-LAB-003-shift-left-analysis.md) |
-| **SC-SRS-001** | ¿Qué debe hacer, y qué no debe permitir? | [Requisitos](docs/security/SC-SRS-001-requisitos-aplicacion.md) |
+| **SC-LAB-001** | ¿Qué puede salir mal? | [Análisis inicial](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/security/SC-LAB-001-analisis-inicial.md) |
+| **SC-LAB-002** | ¿En qué fase se actúa? | [Mapa Secure SDLC](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/security/SC-LAB-002-secure-sdlc-map.md) |
+| **SC-LAB-003** | ¿Qué cuesta descubrirlo tarde? | [Costo y Shift Left](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/security/SC-LAB-003-shift-left-analysis.md) |
+| **SC-SRS-001** | ¿Qué debe hacer, y qué no debe permitir? | [Requisitos](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/security/SC-SRS-001-requisitos-aplicacion.md) |
 
 ### Decisiones de arquitectura
 
 | ADR | Tema |
 |---|---|
-| [001](docs/adr/ADR-001-autorizacion-por-relacion.md) | Autorización por relación y *deny by default* |
-| [002](docs/adr/ADR-002-sesion-opaca.md) | Sesión opaca en cookie, no JWT |
-| [003](docs/adr/ADR-003-auditoria-append-only.md) | Auditoría append-only y atómica |
-| [004](docs/adr/ADR-004-argon2-y-cifrado-totp.md) | Argon2id y cifrado del secreto TOTP |
-| [005](docs/adr/ADR-005-monorepo-y-frontera.md) | Monorepo y frontera web↔api |
-| [006](docs/adr/ADR-006-asignacion-docente-versionada.md) | Asignación docente versionada |
-| [007](docs/adr/ADR-007-entrega-privada-documentos.md) | Entrega privada de documentos |
-| [008](docs/adr/ADR-008-alertas-y-umbrales.md) | Alertas y umbrales |
+| [001](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/adr/ADR-001-autorizacion-por-relacion.md) | Autorización por relación y *deny by default* |
+| [002](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/adr/ADR-002-sesion-opaca.md) | Sesión opaca en cookie, no JWT |
+| [003](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/adr/ADR-003-auditoria-append-only.md) | Auditoría append-only y atómica |
+| [004](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/adr/ADR-004-argon2-y-cifrado-totp.md) | Argon2id y cifrado del secreto TOTP |
+| [005](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/adr/ADR-005-monorepo-y-frontera.md) | Monorepo y frontera web↔api |
+| [006](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/adr/ADR-006-asignacion-docente-versionada.md) | Asignación docente versionada |
+| [007](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/adr/ADR-007-entrega-privada-documentos.md) | Entrega privada de documentos |
+| [008](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/adr/ADR-008-alertas-y-umbrales.md) | Alertas y umbrales |
 
 ### Operación
 
-- [**Decisiones pendientes**](docs/DECISIONES-PENDIENTES.md) — once decisiones
+- [**Decisiones pendientes**](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/DECISIONES-PENDIENTES.md) — once decisiones
   que corresponden a la institución, no al equipo. El sistema propone un valor
   para cada una y funciona con él, pero la propuesta es **visible** en
   `/panel/decisiones`, **atribuible** al firmarse, y **exigible**: el arranque
   en producción falla mientras D-06, D-07 o D-10 sigan sin firma.
-- [**Operación e incidentes**](docs/OPERACION.md) — SLA, respuesta, respaldos,
+- [**Operación e incidentes**](https://github.com/AlexMtzz244/proyDesSeguro/blob/main/docs/OPERACION.md) — SLA, respuesta, respaldos,
   endurecimiento.
 
 ---
@@ -241,8 +249,10 @@ silenciosa:
 
 ## Convenciones
 
-- Documentación en español, en `docs/`. Los análisis de seguridad en
-  `docs/security/` con el identificador de la práctica en el nombre.
+- Documentación en español. Los análisis de seguridad y los ADR viven en el
+  repositorio [proyDesSeguro](https://github.com/AlexMtzz244/proyDesSeguro),
+  bajo `docs/security/` y `docs/adr/`, con el identificador de la práctica en
+  el nombre. Este repositorio contiene únicamente el código de la aplicación.
 - Antes de cada commit: `git status`, `git diff`, `git add`, `git diff --staged`.
 - Mensajes con prefijo de tipo: `docs: agregar analisis inicial SC-LAB-001`.
 - **Nunca** commitear `.env`. El hook de pre-commit lo bloquea, y CI vuelve a

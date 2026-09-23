@@ -62,7 +62,7 @@ export class DecisionesService implements OnApplicationBootstrap {
           '',
           ' El sistema tiene una propuesta para cada una y funcionaria con',
           ' ella, pero una propuesta sin firma es un valor que nadie decidio.',
-          ' Ver docs/DECISIONES-PENDIENTES.md.',
+          ' Ver proyDesSeguro/docs/DECISIONES-PENDIENTES.md.',
           '================================================================',
           '',
         ].join('\n'),
