@@ -8,9 +8,12 @@ import {
   esquemaVerificacionMfa,
   type RespuestaLogin,
 } from '@securecampus/contracts';
-import { Boton, Campo, Entrada, EstadoError, Panel } from '@/componentes/ui';
+import { ArrowLeft16Regular, ArrowRight16Regular, Key16Regular } from '@fluentui/react-icons';
+import { MarcoAcceso } from '@/componentes/marco-acceso';
+import { Boton, Campo, Entrada, EstadoError } from '@/componentes/ui';
 import { useSesion } from '@/componentes/sesion';
 import { api, ErrorDeApi } from '@/lib/api';
+import { cn } from '@/lib/utilidades';
 
 /**
  * Inicio de sesion en dos pasos (RF-001, RF-003).
@@ -33,6 +36,7 @@ export default function PaginaIngresar() {
   const [enviando, setEnviando] = React.useState(false);
   const [error, setError] = React.useState<ErrorDeApi | null>(null);
   const [campos, setCampos] = React.useState<Record<string, string[]>>({});
+  const [codigo, setCodigo] = React.useState('');
 
   const refCodigo = React.useRef<HTMLInputElement>(null);
 
@@ -103,112 +107,111 @@ export default function PaginaIngresar() {
   }
 
   return (
-    <main id="contenido" className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-xl font-semibold">SecureCampus</h1>
-          <p className="text-sm text-tenue">
-            {paso === 'credenciales'
-              ? 'Ingresa con tu correo institucional.'
-              : 'Escribe el codigo de tu aplicacion de autenticacion.'}
-          </p>
-        </header>
+    <MarcoAcceso
+      clave={paso}
+      titulo={paso === 'credenciales' ? 'Ingresar' : 'Verificacion en dos pasos'}
+      descripcion={
+        paso === 'credenciales'
+          ? 'Ingresa con tu correo institucional.'
+          : 'Escribe el codigo de tu aplicacion de autenticacion.'
+      }
+      pie={
+        paso === 'credenciales' ? (
+          <Link
+            href="/recuperar"
+            className="acrilico inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 font-medium text-primario shadow-elevacion-4 transition-shadow hover:shadow-elevacion-8"
+          >
+            <Key16Regular aria-hidden />
+            Olvide mi contrasena
+          </Link>
+        ) : null
+      }
+    >
+      {error ? <EstadoError mensaje={error.message} correlationId={error.correlationId} /> : null}
 
-        {error ? (
-          <EstadoError mensaje={error.message} correlationId={error.correlationId} />
-        ) : null}
+      {paso === 'credenciales' ? (
+        <form onSubmit={enviarCredenciales} className="space-y-5" noValidate>
+          <Campo id="correo" etiqueta="Correo institucional" requerido error={campos['correo']?.[0]}>
+            {(props) => (
+              <Entrada {...props} name="correo" type="email" autoComplete="username" autoFocus />
+            )}
+          </Campo>
 
-        <Panel>
-          {paso === 'credenciales' ? (
-            <form onSubmit={enviarCredenciales} className="space-y-4" noValidate>
-              <Campo
-                id="correo"
-                etiqueta="Correo institucional"
-                requerido
-                error={campos['correo']?.[0]}
-              >
-                {(props) => (
-                  <Entrada
-                    {...props}
-                    name="correo"
-                    type="email"
-                    autoComplete="username"
-                    autoFocus
-                  />
+          <Campo id="contrasena" etiqueta="Contrasena" requerido error={campos['contrasena']?.[0]}>
+            {(props) => (
+              <Entrada {...props} name="contrasena" type="password" autoComplete="current-password" />
+            )}
+          </Campo>
+
+          <Boton type="submit" tamano="lg" className="group w-full" cargando={enviando}>
+            Ingresar
+            {!enviando ? (
+              <ArrowRight16Regular
+                className="transition-transform duration-normal ease-fluent-decelerate group-hover:translate-x-1"
+                aria-hidden
+              />
+            ) : null}
+          </Boton>
+        </form>
+      ) : (
+        <form onSubmit={enviarCodigo} className="space-y-5" noValidate>
+          <Campo
+            id="codigo"
+            etiqueta="Codigo de verificacion"
+            ayuda="Seis digitos, cambia cada 30 segundos."
+            requerido
+            error={campos['codigo']?.[0]}
+          >
+            {(props) => (
+              <Entrada
+                {...props}
+                ref={refCodigo}
+                name="codigo"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                maxLength={6}
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="h-14 text-center font-mono text-2xl tracking-[0.5em]"
+              />
+            )}
+          </Campo>
+
+          {/* Progreso del codigo: seis puntos que se encienden al escribir. */}
+          <div className="flex justify-center gap-2" aria-hidden>
+            {Array.from({ length: 6 }, (_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  'h-1.5 w-6 rounded-full transition-all duration-normal ease-fluent-decelerate',
+                  i < codigo.length ? 'scale-100 bg-primario' : 'scale-75 bg-texto/15',
                 )}
-              </Campo>
+              />
+            ))}
+          </div>
 
-              <Campo
-                id="contrasena"
-                etiqueta="Contrasena"
-                requerido
-                error={campos['contrasena']?.[0]}
-              >
-                {(props) => (
-                  <Entrada
-                    {...props}
-                    name="contrasena"
-                    type="password"
-                    autoComplete="current-password"
-                  />
-                )}
-              </Campo>
+          <Boton type="submit" tamano="lg" className="w-full" cargando={enviando}>
+            Verificar
+          </Boton>
 
-              <Boton type="submit" className="w-full" cargando={enviando}>
-                Ingresar
-              </Boton>
-            </form>
-          ) : (
-            <form onSubmit={enviarCodigo} className="space-y-4" noValidate>
-              <Campo
-                id="codigo"
-                etiqueta="Codigo de verificacion"
-                ayuda="Seis digitos, cambia cada 30 segundos."
-                requerido
-                error={campos['codigo']?.[0]}
-              >
-                {(props) => (
-                  <Entrada
-                    {...props}
-                    ref={refCodigo}
-                    name="codigo"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    className="text-center font-mono text-lg tracking-[0.4em]"
-                  />
-                )}
-              </Campo>
-
-              <Boton type="submit" className="w-full" cargando={enviando}>
-                Verificar
-              </Boton>
-
-              <Boton
-                type="button"
-                variante="texto"
-                className="w-full"
-                onClick={() => {
-                  setPaso('credenciales');
-                  setDesafio('');
-                  setError(null);
-                }}
-              >
-                Usar otra cuenta
-              </Boton>
-            </form>
-          )}
-        </Panel>
-
-        {paso === 'credenciales' ? (
-          <p className="text-center text-sm">
-            <Link href="/recuperar" className="text-primario underline-offset-4 hover:underline">
-              Olvide mi contrasena
-            </Link>
-          </p>
-        ) : null}
-      </div>
-    </main>
+          <Boton
+            type="button"
+            variante="texto"
+            className="w-full"
+            onClick={() => {
+              setPaso('credenciales');
+              setDesafio('');
+              setCodigo('');
+              setError(null);
+            }}
+          >
+            <ArrowLeft16Regular aria-hidden />
+            Usar otra cuenta
+          </Boton>
+        </form>
+      )}
+    </MarcoAcceso>
   );
 }
 

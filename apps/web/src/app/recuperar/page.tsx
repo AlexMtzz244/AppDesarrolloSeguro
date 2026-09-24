@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import * as React from 'react';
 import { esquemaSolicitudRecuperacion } from '@securecampus/contracts';
-import { Boton, Campo, Entrada, EstadoError, Panel } from '@/componentes/ui';
+import { Checkmark16Regular, MailCheckmark24Regular } from '@fluentui/react-icons';
+import { MarcoAcceso } from '@/componentes/marco-acceso';
+import { Boton, Campo, Entrada, EstadoError } from '@/componentes/ui';
 import { api, ErrorDeApi } from '@/lib/api';
 
 /**
@@ -52,57 +54,59 @@ export default function PaginaRecuperar() {
   }
 
   return (
-    <main id="contenido" className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-xl font-semibold">Recuperar acceso</h1>
-          <p className="text-sm text-tenue">
-            Te enviaremos un enlace para restablecer tu contrasena.
-          </p>
-        </header>
+    <MarcoAcceso
+      clave={enviado ? 'enviado' : 'formulario'}
+      titulo={enviado ? 'Revisa tu correo' : 'Recuperar acceso'}
+      descripcion={
+        enviado
+          ? 'Si la cuenta existe, se envio un enlace de recuperacion al correo registrado.'
+          : 'Te enviaremos un enlace para restablecer tu contrasena.'
+      }
+    >
+      {error ? <EstadoError mensaje={error.message} correlationId={error.correlationId} /> : null}
 
-        {error ? <EstadoError mensaje={error.message} correlationId={error.correlationId} /> : null}
+      {enviado ? (
+        <div className="space-y-5" role="status">
+          <div className="flex justify-center">
+            <span className="relative grid h-16 w-16 place-items-center rounded-full bg-primario-suave text-primario">
+              <span className="absolute inset-0 animate-latido rounded-full bg-primario/20" aria-hidden />
+              <MailCheckmark24Regular aria-hidden />
+            </span>
+          </div>
+          <ul className="space-y-2 text-sm text-tenue">
+            {[
+              'El enlace vence en pocos minutos.',
+              'Solo se puede usar una vez.',
+              'Si solicitas otro, el anterior deja de funcionar.',
+              'Al completarlo se cerraran todas tus sesiones activas.',
+            ].map((texto) => (
+              <li key={texto} className="flex items-start gap-2">
+                <Checkmark16Regular className="mt-0.5 shrink-0 text-exito" aria-hidden />
+                {texto}
+              </li>
+            ))}
+          </ul>
+          <Boton asChild variante="contorno" tamano="lg" className="w-full">
+            <Link href="/ingresar">Volver a ingresar</Link>
+          </Boton>
+        </div>
+      ) : (
+        <form onSubmit={enviar} className="space-y-5" noValidate>
+          <Campo id="correo" etiqueta="Correo institucional" requerido error={campos['correo']?.[0]}>
+            {(props) => (
+              <Entrada {...props} name="correo" type="email" autoComplete="username" autoFocus />
+            )}
+          </Campo>
 
-        <Panel>
-          {enviado ? (
-            <div className="space-y-4" role="status">
-              <p className="text-sm">
-                Si la cuenta existe, se envio un enlace de recuperacion al correo registrado.
-              </p>
-              <ul className="space-y-1 text-xs text-tenue">
-                <li>El enlace vence en pocos minutos.</li>
-                <li>Solo se puede usar una vez.</li>
-                <li>Si solicitas otro, el anterior deja de funcionar.</li>
-                <li>Al completarlo se cerraran todas tus sesiones activas.</li>
-              </ul>
-              <Boton asChild variante="contorno" className="w-full">
-                <Link href="/ingresar">Volver a ingresar</Link>
-              </Boton>
-            </div>
-          ) : (
-            <form onSubmit={enviar} className="space-y-4" noValidate>
-              <Campo
-                id="correo"
-                etiqueta="Correo institucional"
-                requerido
-                error={campos['correo']?.[0]}
-              >
-                {(props) => (
-                  <Entrada {...props} name="correo" type="email" autoComplete="username" autoFocus />
-                )}
-              </Campo>
+          <Boton type="submit" tamano="lg" className="w-full" cargando={enviando}>
+            Enviar enlace
+          </Boton>
 
-              <Boton type="submit" className="w-full" cargando={enviando}>
-                Enviar enlace
-              </Boton>
-
-              <Boton asChild variante="texto" className="w-full">
-                <Link href="/ingresar">Cancelar</Link>
-              </Boton>
-            </form>
-          )}
-        </Panel>
-      </div>
-    </main>
+          <Boton asChild variante="texto" className="w-full">
+            <Link href="/ingresar">Cancelar</Link>
+          </Boton>
+        </form>
+      )}
+    </MarcoAcceso>
   );
 }

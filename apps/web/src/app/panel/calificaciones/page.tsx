@@ -1,5 +1,6 @@
 'use client';
 
+import { HatGraduation24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import { useSesion } from '@/componentes/sesion';
 import {
@@ -11,6 +12,7 @@ import {
   Tabla,
   Td,
   Th,
+  EncabezadoPagina,
 } from '@/componentes/ui';
 import { useRecurso } from '@/lib/use-recurso';
 import { fecha } from '@/lib/utilidades';
@@ -46,14 +48,15 @@ export default function PaginaCalificaciones() {
 
   return (
     <>
-      <header>
-        <h1 className="text-lg font-semibold">Calificaciones</h1>
-        <p className="text-sm text-tenue">
-          {puedeCapturar
+      <EncabezadoPagina
+        icono={HatGraduation24Regular}
+        titulo="Calificaciones"
+        descripcion={
+          puedeCapturar
             ? 'Entra a un grupo desde la seccion Grupos para capturar.'
-            : 'Tus calificaciones publicadas.'}
-        </p>
-      </header>
+            : 'Tus calificaciones publicadas.'
+        }
+      />
 
       <Panel
         titulo="Mis calificaciones"

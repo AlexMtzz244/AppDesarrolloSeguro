@@ -1,5 +1,6 @@
 'use client';
 
+import { MailInbox24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import type { SolicitudResumen } from '@securecampus/contracts';
 import {
@@ -11,6 +12,7 @@ import {
   Tabla,
   Td,
   Th,
+  EncabezadoPagina,
 } from '@/componentes/ui';
 import { useRecurso } from '@/lib/use-recurso';
 import { fecha } from '@/lib/utilidades';
@@ -37,10 +39,11 @@ export default function PaginaSolicitudes() {
 
   return (
     <>
-      <header>
-        <h1 className="text-lg font-semibold">Solicitudes</h1>
-        <p className="text-sm text-tenue">Solo las tuyas.</p>
-      </header>
+      <EncabezadoPagina
+        icono={MailInbox24Regular}
+        titulo="Solicitudes"
+        descripcion="Solo las tuyas."
+      />
 
       {!catalogo.cargando && !catalogo.error && !catalogo.datos?.length ? (
         <Panel titulo="Catalogo pendiente de configuracion">

@@ -1,5 +1,6 @@
 'use client';
 
+import { People24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import {
   Boton,
@@ -14,6 +15,7 @@ import {
   Tabla,
   Td,
   Th,
+  EncabezadoPagina,
 } from '@/componentes/ui';
 import { api, ErrorDeApi } from '@/lib/api';
 import { useRecurso } from '@/lib/use-recurso';
@@ -57,13 +59,11 @@ export default function PaginaUsuarios() {
 
   return (
     <>
-      <header>
-        <h1 className="text-lg font-semibold">Usuarios</h1>
-        <p className="text-sm text-tenue">
-          Toda alta, cambio y revocacion queda en la bitacora con autor, motivo y valores anterior y
-          nuevo.
-        </p>
-      </header>
+      <EncabezadoPagina
+        icono={People24Regular}
+        titulo="Usuarios"
+        descripcion="Toda alta, cambio y revocacion queda en la bitacora con autor, motivo y valores anterior y nuevo."
+      />
 
       <Panel titulo="Cuentas" descripcion={usuarios.datos ? `${usuarios.datos.total} en total` : undefined}>
         {usuarios.cargando ? (

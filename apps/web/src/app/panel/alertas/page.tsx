@@ -1,5 +1,6 @@
 'use client';
 
+import { ShieldError24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import {
   Boton,
@@ -11,6 +12,7 @@ import {
   Tabla,
   Td,
   Th,
+  EncabezadoPagina,
 } from '@/componentes/ui';
 import { useRecurso } from '@/lib/use-recurso';
 import { fecha } from '@/lib/utilidades';
@@ -63,12 +65,11 @@ export default function PaginaAlertas() {
 
   return (
     <>
-      <header>
-        <h1 className="text-lg font-semibold">Alertas</h1>
-        <p className="text-sm text-tenue">
-          Sin atender primero. Una bitacora que nadie revisa no es un control, es un archivo.
-        </p>
-      </header>
+      <EncabezadoPagina
+        icono={ShieldError24Regular}
+        titulo="Alertas"
+        descripcion="Sin atender primero. Una bitacora que nadie revisa no es un control, es un archivo."
+      />
 
       <Panel titulo="Alertas de seguridad">
         {alertas.cargando ? (

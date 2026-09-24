@@ -1,5 +1,6 @@
 'use client';
 
+import { PeopleTeam24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import { useSesion } from '@/componentes/sesion';
 import {
@@ -15,6 +16,7 @@ import {
   Tabla,
   Td,
   Th,
+  EncabezadoPagina,
 } from '@/componentes/ui';
 import { api, ErrorDeApi } from '@/lib/api';
 import { useRecurso } from '@/lib/use-recurso';
@@ -53,14 +55,15 @@ export default function PaginaGrupos() {
 
   return (
     <>
-      <header>
-        <h1 className="text-lg font-semibold">Grupos</h1>
-        <p className="text-sm text-tenue">
-          {esJefe
+      <EncabezadoPagina
+        icono={PeopleTeam24Regular}
+        titulo="Grupos"
+        descripcion={
+          esJefe
             ? 'Grupos de tu programa. El alcance lo determina tu adscripcion, no un filtro de esta pantalla.'
-            : 'Grupos con asignacion docente vigente a tu nombre.'}
-        </p>
-      </header>
+            : 'Grupos con asignacion docente vigente a tu nombre.'
+        }
+      />
 
       <Panel titulo="Listado">
         {grupos.cargando ? (

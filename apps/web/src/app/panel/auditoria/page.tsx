@@ -1,5 +1,6 @@
 'use client';
 
+import { History24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import { ACCIONES_AUDITABLES, RESULTADOS_AUDITORIA } from '@securecampus/contracts';
 import {
@@ -13,6 +14,8 @@ import {
   Tabla,
   Td,
   Th,
+  EncabezadoPagina,
+  Selector,
 } from '@/componentes/ui';
 import { useRecurso } from '@/lib/use-recurso';
 import { fecha } from '@/lib/utilidades';
@@ -76,25 +79,23 @@ export default function PaginaAuditoria() {
 
   return (
     <>
-      <header>
-        <h1 className="text-lg font-semibold">Auditoria</h1>
-        <p className="text-sm text-tenue">
-          Registro append-only. Esta vista es de solo lectura por diseno, no por configuracion.
-        </p>
-      </header>
+      <EncabezadoPagina
+        icono={History24Regular}
+        titulo="Auditoria"
+        descripcion="Registro append-only. Esta vista es de solo lectura por diseno, no por configuracion."
+      />
 
       <Panel titulo="Filtros">
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo id="filtro-accion" etiqueta="Accion">
             {(props) => (
-              <select
+              <Selector
                 {...props}
                 value={accion}
                 onChange={(e) => {
                   setAccion(e.target.value);
                   setPagina(1);
                 }}
-                className="flex h-9 w-full rounded-md border border-entrada bg-fondo px-3 text-sm"
               >
                 <option value="">Todas</option>
                 {ACCIONES_AUDITABLES.map((valor) => (
@@ -102,20 +103,19 @@ export default function PaginaAuditoria() {
                     {valor}
                   </option>
                 ))}
-              </select>
+              </Selector>
             )}
           </Campo>
 
           <Campo id="filtro-resultado" etiqueta="Resultado">
             {(props) => (
-              <select
+              <Selector
                 {...props}
                 value={resultado}
                 onChange={(e) => {
                   setResultado(e.target.value);
                   setPagina(1);
                 }}
-                className="flex h-9 w-full rounded-md border border-entrada bg-fondo px-3 text-sm"
               >
                 <option value="">Todos</option>
                 {RESULTADOS_AUDITORIA.map((valor) => (
@@ -123,7 +123,7 @@ export default function PaginaAuditoria() {
                     {valor}
                   </option>
                 ))}
-              </select>
+              </Selector>
             )}
           </Campo>
         </div>

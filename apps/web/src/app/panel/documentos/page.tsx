@@ -1,5 +1,6 @@
 'use client';
 
+import { Document24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import type { CuotaUsuario, DocumentoResumen } from '@securecampus/contracts';
 import {
@@ -12,6 +13,7 @@ import {
   Tabla,
   Td,
   Th,
+  EncabezadoPagina,
 } from '@/componentes/ui';
 import { useRecurso } from '@/lib/use-recurso';
 import { bytes, fecha } from '@/lib/utilidades';
@@ -33,12 +35,11 @@ export default function PaginaDocumentos() {
 
   return (
     <>
-      <header>
-        <h1 className="text-lg font-semibold">Documentos</h1>
-        <p className="text-sm text-tenue">
-          Cada descarga queda registrada con quien la pidio y su resultado.
-        </p>
-      </header>
+      <EncabezadoPagina
+        icono={Document24Regular}
+        titulo="Documentos"
+        descripcion="Cada descarga queda registrada con quien la pidio y su resultado."
+      />
 
       {cuota.datos ? (
         <Panel titulo="Cuota de almacenamiento">
@@ -48,7 +49,7 @@ export default function PaginaDocumentos() {
               <span className="text-tenue">de {bytes(cuota.datos.limiteBytes)}</span>
             </div>
             <div
-              className="h-2 overflow-hidden rounded-full bg-panel"
+              className="h-1.5 overflow-hidden rounded-full bg-texto/10"
               role="progressbar"
               aria-valuenow={Math.round((cuota.datos.usadoBytes / cuota.datos.limiteBytes) * 100)}
               aria-valuemin={0}
@@ -56,7 +57,7 @@ export default function PaginaDocumentos() {
               aria-label="Uso de la cuota de almacenamiento"
             >
               <div
-                className="h-full bg-primario"
+                className="h-full origin-left animate-crecer rounded-full bg-gradient-to-r from-primario to-[hsl(var(--bloom-2))]"
                 style={{
                   width: `${Math.min(100, (cuota.datos.usadoBytes / cuota.datos.limiteBytes) * 100)}%`,
                 }}

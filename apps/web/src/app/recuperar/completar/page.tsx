@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import * as React from 'react';
 import { esquemaContrasena } from '@securecampus/contracts';
-import { Boton, Campo, Entrada, EstadoError, Panel } from '@/componentes/ui';
+import { CheckmarkCircle48Regular } from '@fluentui/react-icons';
+import { MarcoAcceso } from '@/componentes/marco-acceso';
+import { Boton, Campo, Entrada, EstadoCargando, EstadoError } from '@/componentes/ui';
 import { api, ErrorDeApi } from '@/lib/api';
 
 /**
@@ -59,8 +61,9 @@ function Formulario() {
 
   if (resultado === 'ok') {
     return (
-      <Panel>
+      <div>
         <div className="space-y-4" role="status">
+          <CheckmarkCircle48Regular className="mx-auto text-exito" aria-hidden />
           <p className="text-sm font-medium">Tu contrasena se restablecio.</p>
           <p className="text-sm text-tenue">
             Todas las sesiones activas se cerraron, incluidas las de otros dispositivos. Vuelve a
@@ -70,13 +73,13 @@ function Formulario() {
             <Link href="/ingresar">Ir a ingresar</Link>
           </Boton>
         </div>
-      </Panel>
+      </div>
     );
   }
 
   if (resultado === 'rechazado') {
     return (
-      <Panel>
+      <div>
         <div className="space-y-4" role="alert">
           <p className="text-sm font-medium">Este enlace ya no es valido.</p>
           {/* Se enumeran las cuatro causas posibles sin decir cual fue: el
@@ -90,12 +93,12 @@ function Formulario() {
             <Link href="/recuperar">Solicitar otro enlace</Link>
           </Boton>
         </div>
-      </Panel>
+      </div>
     );
   }
 
   return (
-    <Panel>
+    <div>
       <form onSubmit={enviar} className="space-y-4" noValidate>
         <Campo
           id="contrasenaNueva"
@@ -133,26 +136,24 @@ function Formulario() {
         </Boton>
 
         {!token ? (
-          <p role="alert" className="text-xs text-peligro">
+          <p role="alert" className="text-xs font-medium text-peligro">
             El enlace no incluye el token necesario. Solicita uno nuevo.
           </p>
         ) : null}
       </form>
-    </Panel>
+    </div>
   );
 }
 
 export default function PaginaCompletarRecuperacion() {
   return (
-    <main id="contenido" className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-xl font-semibold">Nueva contrasena</h1>
-        </header>
-        <React.Suspense fallback={<Panel>Cargando…</Panel>}>
-          <Formulario />
-        </React.Suspense>
-      </div>
-    </main>
+    <MarcoAcceso
+      titulo="Nueva contrasena"
+      descripcion="Elige una contrasena que no uses en ningun otro sitio."
+    >
+      <React.Suspense fallback={<EstadoCargando />}>
+        <Formulario />
+      </React.Suspense>
+    </MarcoAcceso>
   );
 }

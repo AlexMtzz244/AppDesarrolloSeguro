@@ -1,5 +1,6 @@
 'use client';
 
+import { Signature24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import type { IdDecision } from '@securecampus/contracts';
 import { useSesion } from '@/componentes/sesion';
@@ -12,6 +13,7 @@ import {
   EstadoError,
   Insignia,
   Panel,
+  EncabezadoPagina,
 } from '@/componentes/ui';
 import { api, ErrorDeApi } from '@/lib/api';
 import { useRecurso } from '@/lib/use-recurso';
@@ -52,13 +54,11 @@ export default function PaginaDecisiones() {
 
   return (
     <>
-      <header>
-        <h1 className="text-lg font-semibold">Decisiones institucionales</h1>
-        <p className="text-sm text-tenue">
-          Once decisiones que corresponden a la institución, no al equipo de desarrollo. El sistema
-          propone un valor y funciona con él, pero una propuesta sin firma no es una decisión.
-        </p>
-      </header>
+      <EncabezadoPagina
+        icono={Signature24Regular}
+        titulo="Decisiones institucionales"
+        descripcion="Once decisiones que corresponden a la institución, no al equipo de desarrollo. El sistema propone un valor y funciona con él, pero una propuesta sin firma no es una decisión."
+      />
 
       {decisiones.cargando ? (
         <EstadoCargando etiqueta="Consultando estado de aprobación" />

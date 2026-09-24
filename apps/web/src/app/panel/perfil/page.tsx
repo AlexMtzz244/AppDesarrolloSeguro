@@ -1,5 +1,6 @@
 'use client';
 
+import { Person24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import type { SesionActiva } from '@securecampus/contracts';
 import { useSesion } from '@/componentes/sesion';
@@ -15,6 +16,7 @@ import {
   Tabla,
   Td,
   Th,
+  EncabezadoPagina,
 } from '@/componentes/ui';
 import { api, ErrorDeApi } from '@/lib/api';
 import { useRecurso } from '@/lib/use-recurso';
@@ -43,10 +45,11 @@ export default function PaginaPerfil() {
 
   return (
     <>
-      <header>
-        <h1 className="text-lg font-semibold">Mi perfil</h1>
-        <p className="text-sm text-tenue">Tus datos, tu segundo factor y tus sesiones activas.</p>
-      </header>
+      <EncabezadoPagina
+        icono={Person24Regular}
+        titulo="Mi perfil"
+        descripcion="Tus datos, tu segundo factor y tus sesiones activas."
+      />
 
       <SeccionDatos estado={perfil} />
       <SeccionMfa mfaActivo={actor?.mfaActivo ?? false} alCambiar={refrescar} />
