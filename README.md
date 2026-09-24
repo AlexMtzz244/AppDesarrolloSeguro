@@ -148,6 +148,10 @@ pnpm secrets:scan  # gitleaks sobre el historial completo
 pnpm sbom          # Inventario de dependencias (CycloneDX)
 ```
 
+**[PRUEBAS.md](PRUEBAS.md)** detalla qué puede y qué no puede cada cuenta, cómo
+activar el MFA, en qué orden correr las pruebas y cómo demostrar a mano cada
+control.
+
 ---
 
 ## Estructura
