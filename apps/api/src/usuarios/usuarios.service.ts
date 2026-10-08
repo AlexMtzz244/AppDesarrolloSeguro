@@ -11,6 +11,7 @@ import { AccesoDenegado, ErrorNegocio } from '../comun/excepciones.filter.js';
 import type { ClienteTransaccion } from '../comun/prisma.service.js';
 import { PrismaService } from '../comun/prisma.service.js';
 import { ContrasenaService } from '../identidad/contrasena.service.js';
+import { LimiteIntentosService } from '../identidad/limite-intentos.service.js';
 
 export interface DatosNuevoUsuario {
   readonly correo: string;
@@ -30,6 +31,7 @@ export class UsuariosService {
     private readonly prisma: PrismaService,
     private readonly contrasenas: ContrasenaService,
     private readonly auditoria: AuditoriaService,
+    private readonly limiteIntentos: LimiteIntentosService,
   ) {}
 
   async listar(pagina: number, tamano: number) {
@@ -58,11 +60,16 @@ export class UsuariosService {
       }),
     ]);
 
+    const bloqueos = await Promise.all(
+      usuarios.map((u) => this.limiteIntentos.cuentaBloqueada(u.correo)),
+    );
+
     return {
-      datos: usuarios.map((u) => ({
+      datos: usuarios.map((u, i) => ({
         id: u.idPublico,
         correo: u.correo,
         activo: u.activo,
+        bloqueadoPorIntentos: bloqueos[i] ?? false,
         nombre: u.perfil ? `${u.perfil.nombre} ${u.perfil.apellidoPaterno}` : null,
         matricula: u.perfil?.matricula ?? null,
         creadoEl: u.creadoEl.toISOString(),
@@ -163,6 +170,42 @@ export class UsuariosService {
    * hasta que su cookie expirara por su cuenta, que es justo lo contrario de
    * lo que "desactivar" significa.
    */
+  /**
+   * Levanta el bloqueo por intentos fallidos antes de que venza la ventana.
+   *
+   * No toca la contrasena ni las sesiones: si la cuenta se bloqueo por un
+   * ataque, el administrador debe ademas desactivarla o forzar la
+   * recuperacion; desbloquear solo devuelve al titular la posibilidad de
+   * intentar.
+   */
+  async desbloquear(actor: Actor, idPublico: string, motivo: string) {
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { idPublico },
+      select: { idPublico: true, correo: true },
+    });
+    if (!usuario) throw new AccesoDenegado();
+
+    const estabaBloqueada = await this.limiteIntentos.cuentaBloqueada(usuario.correo);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.auditoria.registrar(tx, {
+        accion: 'usuario.desbloqueo',
+        tipoRecurso: 'usuario',
+        recursoId: usuario.idPublico,
+        resultado: 'exito',
+        motivo,
+        actorId: actor.usuarioId,
+        actorCorreo: actor.correo,
+        antes: { bloqueadoPorIntentos: estabaBloqueada },
+        despues: { bloqueadoPorIntentos: false },
+      });
+    });
+
+    // Despues de registrar: si el evento no se pudo escribir, el bloqueo sigue.
+    await this.limiteIntentos.desbloquearCuenta(usuario.correo);
+    return { id: usuario.idPublico, bloqueadoPorIntentos: false };
+  }
+
   async cambiarEstado(actor: Actor, idPublico: string, activo: boolean, motivo: string) {
     return this.prisma.$transaction(async (tx) => {
       const usuario = await tx.usuario.findUnique({

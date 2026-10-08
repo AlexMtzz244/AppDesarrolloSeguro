@@ -75,6 +75,49 @@ export class SolicitudesService {
     }));
   }
 
+  async bandeja() {
+    const solicitudes = await this.prisma.solicitud.findMany({
+      orderBy: [{ cerradaEl: { sort: 'desc', nulls: 'first' } }, { venceEl: 'asc' }, { creadaEl: 'asc' }],
+      take: 200,
+      select: {
+        idPublico: true,
+        descripcion: true,
+        creadaEl: true,
+        venceEl: true,
+        cerradaEl: true,
+        titular: {
+          select: { correo: true, perfil: { select: { matricula: true } } },
+        },
+        tipoSolicitud: {
+          select: {
+            nombre: true,
+            estados: {
+              orderBy: { orden: 'asc' },
+              select: { idPublico: true, nombre: true, esFinal: true },
+            },
+          },
+        },
+        estado: { select: { idPublico: true, nombre: true, esFinal: true } },
+      },
+    });
+
+    return solicitudes.map((s) => ({
+      id: s.idPublico,
+      descripcion: s.descripcion,
+      creadaEl: s.creadaEl.toISOString(),
+      venceEl: s.venceEl?.toISOString() ?? null,
+      cerradaEl: s.cerradaEl?.toISOString() ?? null,
+      titular: { correo: s.titular.correo, matricula: s.titular.perfil?.matricula ?? null },
+      tipo: s.tipoSolicitud.nombre,
+      estado: { id: s.estado.idPublico, nombre: s.estado.nombre, esFinal: s.estado.esFinal },
+      estadosPosibles: s.tipoSolicitud.estados.map((e) => ({
+        id: e.idPublico,
+        nombre: e.nombre,
+        esFinal: e.esFinal,
+      })),
+    }));
+  }
+
   async detalle(solicitudId: string) {
     const historial = await this.prisma.historialSolicitud.findMany({
       where: { solicitudId },

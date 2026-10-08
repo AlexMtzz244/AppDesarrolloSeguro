@@ -47,6 +47,41 @@ export class PeriodosService {
     }));
   }
 
+  async crear(actor: Actor, datos: { clave: string; inicia: Date; termina: Date }) {
+    return this.prisma.$transaction(async (tx) => {
+      const existente = await tx.periodo.findFirst({
+        where: { clave: datos.clave },
+        select: { id: true },
+      });
+      if (existente) {
+        throw new ErrorNegocio('PERIODO_DUPLICADO', 'Ya existe un periodo con esa clave.', HttpStatus.CONFLICT);
+      }
+
+      const periodo = await tx.periodo.create({
+        data: {
+          idPublico: ulid(),
+          clave: datos.clave,
+          inicia: datos.inicia,
+          termina: datos.termina,
+          estado: 'abierto',
+        },
+        select: { idPublico: true, clave: true },
+      });
+
+      await this.auditoria.registrar(tx, {
+        accion: 'periodo.alta',
+        tipoRecurso: 'periodo',
+        recursoId: periodo.idPublico,
+        resultado: 'exito',
+        actorId: actor.usuarioId,
+        actorCorreo: actor.correo,
+        despues: { clave: datos.clave, inicia: datos.inicia, termina: datos.termina },
+      });
+
+      return { id: periodo.idPublico, clave: periodo.clave };
+    });
+  }
+
   async cerrar(actor: Actor, idPublico: string, motivo: string) {
     return this.prisma.$transaction(async (tx) => {
       const periodo = await tx.periodo.findUnique({

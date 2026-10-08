@@ -39,6 +39,11 @@ export class ErrorDeApi extends Error {
   }
 }
 
+/** Cualquier fallo de una peticion como `ErrorDeApi`, para mostrarlo igual. */
+export function aErrorDeApi(e: unknown): ErrorDeApi {
+  return e instanceof ErrorDeApi ? e : new ErrorDeApi(0, 'RED', 'Sin conexion con el servidor.', '—');
+}
+
 interface OpcionesPeticion {
   readonly metodo?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   readonly cuerpo?: unknown;
@@ -53,7 +58,10 @@ export async function llamar<T>(ruta: string, opciones: OpcionesPeticion = {}): 
     credentials: 'include',
   };
 
-  if (opciones.cuerpo !== undefined) {
+  if (opciones.cuerpo instanceof FormData) {
+    // Sin Content-Type: el navegador pone el boundary del multipart.
+    init.body = opciones.cuerpo;
+  } else if (opciones.cuerpo !== undefined) {
     init.headers = { 'Content-Type': 'application/json' };
     init.body = JSON.stringify(opciones.cuerpo);
   }
@@ -87,6 +95,8 @@ export const api = {
   get: <T>(ruta: string, señal?: AbortSignal) =>
     llamar<T>(ruta, señal ? { señal } : {}),
   post: <T>(ruta: string, cuerpo?: unknown) => llamar<T>(ruta, { metodo: 'POST', cuerpo }),
+  subir: <T>(ruta: string, formulario: FormData) =>
+    llamar<T>(ruta, { metodo: 'POST', cuerpo: formulario }),
   patch: <T>(ruta: string, cuerpo?: unknown) => llamar<T>(ruta, { metodo: 'PATCH', cuerpo }),
   delete: <T>(ruta: string) => llamar<T>(ruta, { metodo: 'DELETE' }),
 };

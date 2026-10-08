@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  CalendarLtr20Filled,
+  CalendarLtr20Regular,
   Dismiss20Regular,
   Document20Filled,
   Document20Regular,
@@ -46,8 +48,8 @@ interface Entrada {
   readonly etiqueta: string;
   readonly icono: FluentIcon;
   readonly iconoActivo: FluentIcon;
-  /** Permiso que hace VISIBLE la entrada. No es lo que la autoriza. */
-  readonly permiso: Permiso;
+  /** Permisos que hacen VISIBLE la entrada (basta uno). No es lo que la autoriza. */
+  readonly permiso: Permiso | readonly Permiso[];
 }
 
 const NAVEGACION: readonly Entrada[] = [
@@ -58,9 +60,16 @@ const NAVEGACION: readonly Entrada[] = [
     etiqueta: 'Calificaciones',
     icono: HatGraduation20Regular,
     iconoActivo: HatGraduation20Filled,
-    permiso: 'calificacion:leer',
+    permiso: ['calificacion:leer', 'calificacion:corregir'],
   },
   { href: '/panel/grupos', etiqueta: 'Grupos', icono: PeopleTeam20Regular, iconoActivo: PeopleTeam20Filled, permiso: 'grupo:leer' },
+  {
+    href: '/panel/periodos',
+    etiqueta: 'Periodos',
+    icono: CalendarLtr20Regular,
+    iconoActivo: CalendarLtr20Filled,
+    permiso: 'periodo:leer',
+  },
   { href: '/panel/documentos', etiqueta: 'Documentos', icono: Document20Regular, iconoActivo: Document20Filled, permiso: 'documento:leer' },
   { href: '/panel/solicitudes', etiqueta: 'Solicitudes', icono: MailInbox20Regular, iconoActivo: MailInbox20Filled, permiso: 'solicitud:leer' },
   { href: '/panel/usuarios', etiqueta: 'Usuarios', icono: People20Regular, iconoActivo: People20Filled, permiso: 'usuario:leer' },
@@ -144,7 +153,11 @@ export default function LayoutPanel({ children }: { readonly children: React.Rea
 
   if (!actor) return null;
 
-  const visibles = NAVEGACION.filter((entrada) => actor.permisos.includes(entrada.permiso));
+  const visibles = NAVEGACION.filter((entrada) =>
+    (typeof entrada.permiso === 'string' ? [entrada.permiso] : entrada.permiso).some((p) =>
+      actor.permisos.includes(p),
+    ),
+  );
   const avisoMfa = actor.mfaObligatorio && !actor.mfaActivo;
 
   const pie = (conTexto: boolean) => (

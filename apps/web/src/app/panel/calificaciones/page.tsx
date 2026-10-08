@@ -16,6 +16,8 @@ import {
 } from '@/componentes/ui';
 import { useRecurso } from '@/lib/use-recurso';
 import { fecha } from '@/lib/utilidades';
+import { CapturaProfesor } from './captura';
+import { CorreccionCalificaciones } from './correccion';
 
 interface CalificacionPropia {
   readonly id: string;
@@ -43,8 +45,8 @@ interface CalificacionPropia {
 export default function PaginaCalificaciones() {
   const { actor } = useSesion();
   const puedeCapturar = actor?.permisos.includes('calificacion:crear') ?? false;
-
-  const mias = useRecurso<CalificacionPropia[]>('/calificaciones/mias');
+  const puedeCorregir = actor?.permisos.includes('calificacion:corregir') ?? false;
+  const esEstudiante = actor?.roles.includes('estudiante') ?? false;
 
   return (
     <>
@@ -53,11 +55,31 @@ export default function PaginaCalificaciones() {
         titulo="Calificaciones"
         descripcion={
           puedeCapturar
-            ? 'Entra a un grupo desde la seccion Grupos para capturar.'
-            : 'Tus calificaciones publicadas.'
+            ? 'Captura y publica las calificaciones de tus grupos.'
+            : puedeCorregir
+              ? 'Correccion de calificaciones ya publicadas, con motivo y aviso al estudiante.'
+              : 'Tus calificaciones publicadas.'
         }
       />
 
+      {puedeCapturar ? <CapturaProfesor /> : null}
+      {puedeCorregir ? <CorreccionCalificaciones /> : null}
+      {esEstudiante ? <MisCalificaciones /> : null}
+      {!puedeCapturar && !puedeCorregir && !esEstudiante ? (
+        <Panel titulo="Sin acciones">
+          <p className="text-sm text-tenue">
+            Tu rol no captura, corrige ni recibe calificaciones.
+          </p>
+        </Panel>
+      ) : null}
+    </>
+  );
+}
+
+function MisCalificaciones() {
+  const mias = useRecurso<CalificacionPropia[]>('/calificaciones/mias');
+
+  return (
       <Panel
         titulo="Mis calificaciones"
         descripcion="Una calificacion corregida despues de publicarse siempre genera un aviso a tu correo."
@@ -113,6 +135,5 @@ export default function PaginaCalificaciones() {
           </Tabla>
         )}
       </Panel>
-    </>
   );
 }

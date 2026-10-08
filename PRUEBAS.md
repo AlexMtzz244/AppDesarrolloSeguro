@@ -112,7 +112,7 @@ infraestructura que el anterior.
 |---|---|---|---|
 | 1 | `pnpm typecheck` | Tipos en todo el monorepo | nada |
 | 2 | `pnpm test` | 39 pruebas unitarias y estructurales | nada |
-| 3 | `pnpm test:int` | 72 pruebas de integración, incluidas las 13 negativas obligatorias | Docker arriba, **servidores de desarrollo apagados** |
+| 3 | `pnpm test:int` | 84 pruebas de integración, incluidas las 13 negativas obligatorias | Docker arriba, **servidores de desarrollo apagados** |
 | 4 | `pnpm e2e` | 9 pruebas de navegador (Playwright) | Docker arriba, **servidores de desarrollo encendidos** |
 
 Todas se corren desde la raíz del repositorio.
@@ -241,10 +241,18 @@ corresponde.
 Abre http://localhost:3000. Usa una **ventana de incógnito por cuenta** para
 tener dos sesiones a la vez sin que se pisen.
 
-La interfaz web cubre el acceso, el perfil, los grupos, los usuarios, la
-auditoría y las decisiones. **No tiene pantallas** para capturar, publicar o
-corregir calificaciones, crear grupos, subir documentos ni crear solicitudes:
-esas pruebas se hacen por API (siguiente apartado).
+Cada rol tiene en la interfaz las acciones de su tabla de la sección 1:
+
+| Rol | Dónde |
+|---|---|
+| profesor | **Grupos → Calificar**, o **Calificaciones**: captura en borrador, publica con confirmación, historial de versiones |
+| estudiante | **Calificaciones** (solo publicadas) · **Documentos → Subir** · **Solicitudes → Nueva solicitud**, con adjuntos y detalle |
+| jefe.isc | **Grupos → Nuevo grupo** · **Gestionar**: asignar profesor de una lista, cerrar la asignación, inscribir y dar de baja |
+| admin | **Calificaciones**: corregir por matrícula (pide autorización si el periodo cerró) · **Periodos**: alta y cierre · **Solicitudes**: bandeja y cambio de estado · **Usuarios**: alta, desactivar, desbloquear por intentos, roles |
+| autoridad | **Periodos → Conceder autorización** sobre un periodo cerrado |
+
+Las pruebas que buscan el código HTTP exacto se hacen por API (siguiente
+apartado).
 
 | # | Pasos | Resultado esperado |
 |---|---|---|

@@ -5,6 +5,8 @@ import { z } from 'zod';
 import {
   esquemaCrearAsignacionDocente,
   esquemaCrearGrupo,
+  esquemaCrearPeriodo,
+  esquemaId,
   esquemaMotivo,
   type CrearGrupo,
 } from '@securecampus/contracts';
@@ -18,6 +20,7 @@ import { validar } from '../comun/zod-validacion.pipe.js';
 import { PrismaService } from '../comun/prisma.service.js';
 import { AsignacionesService } from './asignaciones.service.js';
 import { GruposService } from './grupos.service.js';
+import { InscripcionesService } from './inscripciones.service.js';
 import { PeriodosService } from './periodos.service.js';
 
 const esquemaCrearGrupoConMotivo = esquemaCrearGrupo.extend({ motivo: esquemaMotivo });
@@ -42,6 +45,7 @@ export class AcademicoController {
     private readonly grupos: GruposService,
     private readonly asignaciones: AsignacionesService,
     private readonly periodos: PeriodosService,
+    private readonly inscripciones: InscripcionesService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -52,6 +56,16 @@ export class AcademicoController {
   @ApiOperation({ summary: 'Lista los periodos academicos con su estado (RF-021)' })
   async listarPeriodos() {
     return this.periodos.listar();
+  }
+
+  @Post('periodos')
+  @Politica({ permiso: 'periodo:crear', relacion: 'no-aplica' })
+  @ApiOperation({ summary: 'Da de alta un periodo academico, abierto (RF-021)' })
+  async crearPeriodo(
+    @ActorActual() actor: Actor,
+    @Body(validar(esquemaCrearPeriodo)) cuerpo: { clave: string; inicia: Date; termina: Date },
+  ) {
+    return this.periodos.crear(actor, cuerpo);
   }
 
   @Get('programas/mio')
@@ -196,6 +210,67 @@ export class AcademicoController {
   })
   async listarAutorizaciones(@Param('id') id: string) {
     return this.periodos.listarAutorizaciones(id);
+  }
+
+  // --- Personas del programa ----------------------------------------------
+
+  @Get('profesores')
+  // Lectura previa a asignar: el motivo se exige al registrar la asignacion.
+  @Politica({ permiso: 'asignacion-docente:crear', relacion: 'no-aplica', exigeMotivo: false })
+  @ApiOperation({
+    summary: 'Profesores asignables del programa del actor (RF-030)',
+    description: 'Solo cuentas con permiso vigente de capturar; nunca el propio actor.',
+  })
+  async profesores(@ActorActual() actor: Actor) {
+    return this.inscripciones.profesoresDelPrograma(actor);
+  }
+
+  @Get('estudiantes')
+  @Politica({ permiso: 'inscripcion:crear', relacion: 'no-aplica' })
+  @ApiOperation({ summary: 'Estudiantes activos del programa del actor' })
+  async estudiantes(@ActorActual() actor: Actor) {
+    return this.inscripciones.estudiantesDelPrograma(actor);
+  }
+
+  // --- Inscripciones -------------------------------------------------------
+
+  @Get('grupos/:id/inscripciones')
+  // Lista de gestion para quien inscribe. El profesor ve a sus alumnos por la
+  // lista de captura, que exige asignacion vigente; esta ruta no se la abre.
+  @Politica({ permiso: 'inscripcion:crear', relacion: grupoDeMiPrograma })
+  @ApiOperation({ summary: 'Inscritos vigentes del grupo' })
+  async inscritos(@Req() req: Request & { recurso?: { id: string } }) {
+    return this.inscripciones.listar(req.recurso!.id);
+  }
+
+  @Post('grupos/:id/inscripciones')
+  @Politica({ permiso: 'inscripcion:crear', relacion: grupoDeMiProgramaEnPeriodoAbierto })
+  @ApiOperation({
+    summary: 'Inscribe a un estudiante del mismo programa en el grupo',
+    description: 'Respeta el cupo y rechaza estudiantes de otro programa o sin rol de estudiante.',
+  })
+  async inscribir(
+    @ActorActual() actor: Actor,
+    @Req() req: Request & { recurso?: { id: string; idPublico: string; programaId: string } },
+    @Body(validar(z.object({ estudianteId: esquemaId }))) cuerpo: { estudianteId: string },
+  ) {
+    return this.inscripciones.inscribir(actor, req.recurso!, cuerpo.estudianteId);
+  }
+
+  @Post('grupos/:id/inscripciones/:inscripcionId/baja')
+  @Politica({
+    permiso: 'inscripcion:crear',
+    relacion: grupoDeMiProgramaEnPeriodoAbierto,
+    exigeMotivo: true,
+  })
+  @ApiOperation({ summary: 'Da de baja una inscripcion; la fila se conserva con su fecha' })
+  async bajaInscripcion(
+    @ActorActual() actor: Actor,
+    @Req() req: Request & { recurso?: { id: string; idPublico: string } },
+    @Param('inscripcionId') inscripcionId: string,
+    @Body(validar(z.object({ motivo: esquemaMotivo }))) cuerpo: { motivo: string },
+  ) {
+    return this.inscripciones.baja(actor, req.recurso!, inscripcionId, cuerpo.motivo);
   }
 
   // --- Asignacion docente --------------------------------------------------

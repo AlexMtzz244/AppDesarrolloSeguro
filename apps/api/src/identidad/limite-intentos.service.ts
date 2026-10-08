@@ -121,6 +121,20 @@ export class LimiteIntentosService {
     await this.redis.del(this.clave('cuenta', correo));
   }
 
+  /** La cuenta agoto sus intentos en la ventana vigente. */
+  async cuentaBloqueada(correo: string): Promise<boolean> {
+    const intentos = await this.contarEnVentana(this.clave('cuenta', correo));
+    return intentos >= this.entorno.LOGIN_MAX_INTENTOS_CUENTA;
+  }
+
+  /**
+   * Desbloqueo administrativo: limpia solo el contador de la cuenta. El de
+   * origen se conserva por la misma razon que en `registrarExito`.
+   */
+  async desbloquearCuenta(correo: string): Promise<void> {
+    await this.redis.del(this.clave('cuenta', correo));
+  }
+
   /**
    * Espera hasta completar el piso de latencia uniforme (RNFS-016).
    *

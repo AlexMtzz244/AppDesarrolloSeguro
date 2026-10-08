@@ -1,10 +1,15 @@
 'use client';
 
-import { Document24Regular } from '@fluentui/react-icons';
+import { ArrowUpload16Regular, Document24Regular } from '@fluentui/react-icons';
 import * as React from 'react';
 import type { CuotaUsuario, DocumentoResumen } from '@securecampus/contracts';
+import { useSesion } from '@/componentes/sesion';
 import {
+  BarraMensaje,
   Boton,
+  Campo,
+  Entrada,
+  Selector,
   EstadoCargando,
   EstadoError,
   EstadoVacio,
@@ -15,8 +20,27 @@ import {
   Th,
   EncabezadoPagina,
 } from '@/componentes/ui';
+import { aErrorDeApi, api, type ErrorDeApi } from '@/lib/api';
 import { useRecurso } from '@/lib/use-recurso';
 import { bytes, fecha } from '@/lib/utilidades';
+
+// La API entrega el tipo como objeto, no como la cadena del contrato.
+type Documento = Omit<DocumentoResumen, 'tipoDocumento'> & {
+  readonly tipoDocumento: { clave: string; nombre: string };
+};
+
+interface TipoDocumento {
+  readonly clave: string;
+  readonly nombre: string;
+  readonly mimesPermitidos: string[];
+  readonly tamanoMaximoBytes: number;
+}
+
+const EXTENSIONES: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'image/jpeg': '.jpg,.jpeg',
+  'image/png': '.png',
+};
 
 /**
  * Documentos del titular (RF-051).
@@ -28,7 +52,9 @@ import { bytes, fecha } from '@/lib/utilidades';
  * su clave de almacenamiento, porque la API no la incluye en la respuesta.
  */
 export default function PaginaDocumentos() {
-  const documentos = useRecurso<DocumentoResumen[]>('/documentos/mios');
+  const { actor } = useSesion();
+  const puedeSubir = actor?.permisos.includes('documento:crear') ?? false;
+  const documentos = useRecurso<Documento[]>('/documentos/mios');
   const cuota = useRecurso<CuotaUsuario | null>('/documentos/cuota');
 
   const base = process.env['NEXT_PUBLIC_API_URL'] ?? '';
@@ -67,6 +93,15 @@ export default function PaginaDocumentos() {
         </Panel>
       ) : null}
 
+      {puedeSubir ? (
+        <FormularioCarga
+          alTerminar={() => {
+            documentos.recargar();
+            cuota.recargar();
+          }}
+        />
+      ) : null}
+
       <Panel
         titulo="Mis documentos"
         descripcion="Un documento solo se entrega despues de que el antivirus lo marca como limpio."
@@ -99,7 +134,7 @@ export default function PaginaDocumentos() {
                 return (
                   <tr key={documento.id}>
                     <Td className="font-medium">{documento.nombreOriginal}</Td>
-                    <Td className="text-xs text-tenue">{documento.tipoDocumento}</Td>
+                    <Td className="text-xs text-tenue">{documento.tipoDocumento.nombre}</Td>
                     <Td className="font-mono text-xs">{bytes(documento.tamanoBytes)}</Td>
                     <Td>
                       {disponible ? (
@@ -128,5 +163,106 @@ export default function PaginaDocumentos() {
         )}
       </Panel>
     </>
+  );
+}
+
+/**
+ * Carga de documentos (RF-050).
+ *
+ * El `accept` del selector es solo una ayuda: el servidor vuelve a mirar los
+ * magic bytes y rechaza un ejecutable renombrado a .pdf (RNFS-044).
+ */
+function FormularioCarga({ alTerminar }: { readonly alTerminar: () => void }) {
+  const tipos = useRecurso<TipoDocumento[]>('/documentos/tipos');
+  const [tipo, setTipo] = React.useState('');
+  const [enviando, setEnviando] = React.useState(false);
+  const [error, setError] = React.useState<ErrorDeApi | null>(null);
+  const [aviso, setAviso] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!tipo && tipos.datos?.[0]) setTipo(tipos.datos[0].clave);
+  }, [tipos.datos, tipo]);
+
+  const elegido = tipos.datos?.find((t) => t.clave === tipo);
+
+  async function enviar(evento: React.FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    const formulario = evento.currentTarget;
+    const archivo = (formulario.elements.namedItem('archivo') as HTMLInputElement).files?.[0];
+    if (!archivo) return;
+    setEnviando(true);
+    setError(null);
+    setAviso(null);
+    try {
+      const datos = new FormData();
+      datos.append('archivo', archivo);
+      await api.subir(`/documentos?tipo=${encodeURIComponent(tipo)}`, datos);
+      formulario.reset();
+      setAviso('Documento recibido. Estara disponible cuando el antivirus termine de analizarlo.');
+      alTerminar();
+    } catch (e) {
+      setError(aErrorDeApi(e));
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Panel titulo="Subir documento" descripcion="Pasa por cuarentena y antivirus antes de poder descargarse.">
+      {tipos.cargando ? (
+        <EstadoCargando />
+      ) : tipos.error ? (
+        <EstadoError mensaje={tipos.error.message} onReintentar={tipos.recargar} />
+      ) : !tipos.datos?.length ? (
+        <EstadoVacio mensaje="No hay tipos de documento habilitados." />
+      ) : (
+        <form onSubmit={(e) => void enviar(e)} className="grid max-w-2xl gap-4 sm:grid-cols-2">
+          <Campo id="doc-tipo" etiqueta="Tipo de documento" requerido>
+            {(props) => (
+              <Selector {...props} value={tipo} onChange={(e) => setTipo(e.target.value)}>
+                {tipos.datos!.map((t) => (
+                  <option key={t.clave} value={t.clave}>
+                    {t.nombre}
+                  </option>
+                ))}
+              </Selector>
+            )}
+          </Campo>
+          <Campo
+            id="doc-archivo"
+            etiqueta="Archivo"
+            ayuda={
+              elegido
+                ? `${elegido.mimesPermitidos.map((m) => EXTENSIONES[m] ?? m).join(', ')} · maximo ${bytes(elegido.tamanoMaximoBytes)}`
+                : undefined
+            }
+            requerido
+          >
+            {(props) => (
+              <Entrada
+                {...props}
+                name="archivo"
+                type="file"
+                required
+                accept={elegido?.mimesPermitidos.join(',')}
+                className="h-auto py-1.5 file:mr-3 file:rounded file:border-0 file:bg-primario-suave file:px-2 file:py-1 file:text-xs file:font-semibold file:text-primario"
+              />
+            )}
+          </Campo>
+          <div className="space-y-3 sm:col-span-2">
+            {error ? <EstadoError mensaje={error.message} correlationId={error.correlationId} /> : null}
+            {aviso ? (
+              <BarraMensaje tono="exito" role="status">
+                {aviso}
+              </BarraMensaje>
+            ) : null}
+            <Boton type="submit" cargando={enviando} disabled={!tipo}>
+              <ArrowUpload16Regular aria-hidden />
+              Subir
+            </Boton>
+          </div>
+        </form>
+      )}
+    </Panel>
   );
 }

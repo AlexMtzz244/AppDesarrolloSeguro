@@ -59,6 +59,13 @@ export class DocumentosController {
     return this.documentos.misDocumentos(actor);
   }
 
+  @Get('tipos')
+  @Politica({ permiso: 'documento:crear', relacion: 'no-aplica' })
+  @ApiOperation({ summary: 'Tipos de documento habilitados, con sus limites (D-04)' })
+  async tipos() {
+    return this.documentos.tipos();
+  }
+
   @Get('cuota')
   @Politica({ permiso: 'documento:leer', relacion: 'no-aplica' })
   @ApiOperation({ summary: 'Cuota de almacenamiento del usuario (RNFS-045)' })

@@ -4,6 +4,7 @@ import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import type { Actor } from '../autorizacion/actor.js';
 import { AccesoDenegado, ErrorNegocio } from '../comun/excepciones.filter.js';
 import { PrismaService } from '../comun/prisma.service.js';
+import { conPermisoVigente } from './inscripciones.service.js';
 
 /**
  * Asignacion docente versionada (RF-030 a RF-032).
@@ -109,6 +110,16 @@ export class AsignacionesService {
           'Debe hacerlo otra cuenta con la atribucion correspondiente.',
         HttpStatus.CONFLICT,
       );
+    }
+
+    // Solo cuentas que de verdad pueden capturar: asignar un grupo a un
+    // estudiante o a un administrativo dejaria una relacion que nadie puede usar
+    // y que contamina el historial de asignaciones.
+    const puedeCapturar = await this.prisma.usuario.count({
+      where: { id: profesor.id, ...conPermisoVigente('calificacion:crear') },
+    });
+    if (!puedeCapturar) {
+      throw new ErrorNegocio('PROFESOR_DESCONOCIDO', 'El profesor indicado no existe o esta inactivo.');
     }
 
     await this.verificarChoquesDeHorario(profesor.id, grupo.id, grupo.periodoId);

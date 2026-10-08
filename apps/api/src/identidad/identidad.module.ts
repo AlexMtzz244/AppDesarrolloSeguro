@@ -23,6 +23,6 @@ import { SesionService } from './sesion.service.js';
     RecuperacionService,
     SesionService,
   ],
-  exports: [SesionService, MfaService, ContrasenaService],
+  exports: [SesionService, MfaService, ContrasenaService, LimiteIntentosService],
 })
 export class IdentidadModule {}

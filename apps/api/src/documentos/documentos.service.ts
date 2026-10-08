@@ -99,6 +99,20 @@ export class DocumentosService {
     }));
   }
 
+  async tipos() {
+    const tipos = await this.prisma.tipoDocumento.findMany({
+      where: { activo: true },
+      orderBy: { nombre: 'asc' },
+      select: { clave: true, nombre: true, mimesPermitidos: true, tamanoMaximoBytes: true },
+    });
+    return tipos.map((t) => ({
+      clave: t.clave,
+      nombre: t.nombre,
+      mimesPermitidos: t.mimesPermitidos.split(',').map((m) => m.trim()),
+      tamanoMaximoBytes: Number(t.tamanoMaximoBytes),
+    }));
+  }
+
   async cuota(usuarioId: string) {
     const cuota = await this.prisma.cuotaUsuario.findUnique({ where: { usuarioId } });
     if (!cuota) return null;

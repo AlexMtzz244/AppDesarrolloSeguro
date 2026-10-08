@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Prisma } from '@prisma/client';
 import type { Request } from 'express';
+import { z } from 'zod';
 import {
   esquemaCapturaLote,
   esquemaCorregirCalificacion,
@@ -17,7 +18,9 @@ import {
 import { validar } from '../comun/zod-validacion.pipe.js';
 import { CalificacionesService } from './calificaciones.service.js';
 
-type GrupoResuelto = { grupo: { id: string; idPublico: string } };
+const esquemaBusquedaMatricula = z.object({ matricula: z.string().trim().min(1).max(30) });
+
+type GrupoResuelto ={ grupo: { id: string; idPublico: string } };
 type CalificacionResuelta = {
   id: string;
   idPublico: string;
@@ -43,6 +46,19 @@ export class CalificacionesController {
   })
   async mias(@ActorActual() actor: Actor) {
     return this.calificaciones.misCalificaciones(actor);
+  }
+
+  @Get('corregibles')
+  // Busqueda previa a corregir: el motivo se exige en la correccion misma.
+  @Politica({ permiso: 'calificacion:corregir', relacion: 'no-aplica', exigeMfa: true, exigeMotivo: false })
+  @ApiOperation({
+    summary: 'Calificaciones publicadas de un estudiante, por matricula (RF-044)',
+    description:
+      'Punto de partida del flujo de correccion. Exige la matricula exacta: ' +
+      'no es un listado general de calificaciones.',
+  })
+  async corregibles(@Query(validar(esquemaBusquedaMatricula)) q: { matricula: string }) {
+    return this.calificaciones.corregibles(q.matricula);
   }
 
   @Get('grupo/:grupoId')
@@ -108,9 +124,15 @@ export class CalificacionesController {
     @Req() req: Request & { recurso?: CalificacionResuelta },
     @Param('id') _id: string,
     @Body(validar(esquemaCorregirCalificacion))
-    cuerpo: { calificacionId: string; valorNuevo: number; motivo: string },
+    cuerpo: { calificacionId: string; valorNuevo: number; motivo: string; autorizacionId?: string },
   ) {
-    return this.calificaciones.corregir(actor, req.recurso!, cuerpo.valorNuevo, cuerpo.motivo);
+    return this.calificaciones.corregir(
+      actor,
+      req.recurso!,
+      cuerpo.valorNuevo,
+      cuerpo.motivo,
+      cuerpo.autorizacionId,
+    );
   }
 
   @Get(':id/historial')

@@ -4,6 +4,7 @@ import { ulid } from 'ulid';
 import { transicionPermitida, type EstadoCalificacion } from '@securecampus/contracts';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import type { Actor } from '../autorizacion/actor.js';
+import { PeriodosService } from '../academico/periodos.service.js';
 import { AccesoDenegado, ErrorNegocio } from '../comun/excepciones.filter.js';
 import { PrismaService } from '../comun/prisma.service.js';
 import { NotificacionesService } from '../notificaciones/notificaciones.service.js';
@@ -31,7 +32,75 @@ export class CalificacionesService {
     private readonly prisma: PrismaService,
     private readonly auditoria: AuditoriaService,
     private readonly notificaciones: NotificacionesService,
+    private readonly periodos: PeriodosService,
   ) {}
+
+  /**
+   * Calificaciones publicadas o corregidas de un estudiante, buscado por
+   * matricula, para quien tiene `calificacion:corregir`.
+   *
+   * Nunca devuelve borradores: lo que no se ha publicado no se corrige, se
+   * captura. La busqueda exige la matricula exacta para que esto no sea un
+   * listado general de calificaciones de toda la institucion.
+   */
+  async corregibles(matricula: string) {
+    const perfil = await this.prisma.perfil.findUnique({
+      where: { matricula },
+      select: {
+        nombre: true,
+        apellidoPaterno: true,
+        apellidoMaterno: true,
+        matricula: true,
+        usuario: { select: { id: true, idPublico: true, correo: true } },
+      },
+    });
+
+    if (!perfil) return null;
+
+    const calificaciones = await this.prisma.calificacion.findMany({
+      where: { estudianteId: perfil.usuario.id, estado: { in: ['publicado', 'corregido'] } },
+      orderBy: { actualizadaEl: 'desc' },
+      select: {
+        idPublico: true,
+        valor: true,
+        estado: true,
+        versionActual: true,
+        actualizadaEl: true,
+        grupo: {
+          select: {
+            clave: true,
+            materia: { select: { clave: true, nombre: true } },
+            periodo: { select: { idPublico: true, clave: true, estado: true } },
+          },
+        },
+      },
+    });
+
+    return {
+      estudiante: {
+        id: perfil.usuario.idPublico,
+        correo: perfil.usuario.correo,
+        matricula: perfil.matricula,
+        nombre: `${perfil.nombre} ${perfil.apellidoPaterno} ${perfil.apellidoMaterno ?? ''}`.trim(),
+      },
+      calificaciones: calificaciones.map((c) => ({
+        id: c.idPublico,
+        valor: Number(c.valor),
+        estado: c.estado,
+        version: c.versionActual,
+        actualizadaEl: c.actualizadaEl.toISOString(),
+        grupo: {
+          clave: c.grupo.clave,
+          materia: c.grupo.materia,
+          periodo: {
+            id: c.grupo.periodo.idPublico,
+            clave: c.grupo.periodo.clave,
+            estado: c.grupo.periodo.estado,
+          },
+        },
+      })),
+    };
+  }
 
   /** Calificaciones del propio estudiante (RF-040). Nunca en borrador. */
   async misCalificaciones(actor: Actor) {
@@ -324,6 +393,7 @@ export class CalificacionesService {
     },
     valorNuevo: number,
     motivo: string,
+    autorizacionId?: string,
   ) {
     if (!transicionPermitida(calificacion.estado as EstadoCalificacion, 'corregido')) {
       throw new ErrorNegocio(
@@ -333,7 +403,39 @@ export class CalificacionesService {
       );
     }
 
+    const { periodo } = await this.prisma.grupo.findUniqueOrThrow({
+      where: { id: calificacion.grupoId },
+      select: { periodo: { select: { id: true, estado: true } } },
+    });
+    const retroactiva = periodo.estado === 'cerrado';
+
+    // Corregir sobre un periodo cerrado es un cambio retroactivo (RF-033):
+    // exige el permiso de ejecutarlo y una autorizacion que concedio otra
+    // cuenta. Sin esto, la correccion seria la puerta trasera al pasado.
+    if (retroactiva && !actor.permisos.has('periodo:modificar-retroactivo')) {
+      throw new ErrorNegocio(
+        'PERIODO_CERRADO',
+        'El periodo de esta calificacion esta cerrado.',
+        HttpStatus.CONFLICT,
+      );
+    }
+    if (retroactiva && !autorizacionId) {
+      throw new ErrorNegocio(
+        'AUTORIZACION_REQUERIDA',
+        'El periodo esta cerrado: la correccion exige una autorizacion extraordinaria vigente.',
+        HttpStatus.CONFLICT,
+      );
+    }
+
     const resultado = await this.prisma.$transaction(async (tx) => {
+      if (retroactiva && !(await this.periodos.consumirAutorizacion(tx, autorizacionId!, periodo.id))) {
+        throw new ErrorNegocio(
+          'AUTORIZACION_INVALIDA',
+          'La autorizacion no existe, no es de este periodo, ya se uso o vencio.',
+          HttpStatus.CONFLICT,
+        );
+      }
+
       const version = calificacion.versionActual + 1;
 
       await tx.calificacion.update({
@@ -367,7 +469,12 @@ export class CalificacionesService {
         actorId: actor.usuarioId,
         actorCorreo: actor.correo,
         antes: { valor: Number(calificacion.valor), estado: calificacion.estado },
-        despues: { valor: valorNuevo, estado: 'corregido', version },
+        despues: {
+          valor: valorNuevo,
+          estado: 'corregido',
+          version,
+          ...(retroactiva ? { autorizacionExtraordinaria: autorizacionId } : {}),
+        },
       });
 
       return { version, estudianteId: calificacion.estudianteId };

@@ -1,57 +1,40 @@
 'use client';
 
-import { PeopleTeam24Regular } from '@fluentui/react-icons';
+import { Add16Regular, HatGraduation20Regular, PeopleTeam24Regular } from '@fluentui/react-icons';
+import Link from 'next/link';
 import * as React from 'react';
 import { useSesion } from '@/componentes/sesion';
 import {
   Boton,
-  Campo,
-  Entrada,
+  EncabezadoPagina,
   EstadoCargando,
   EstadoError,
   EstadoVacio,
   Insignia,
   Panel,
-  AreaTexto,
   Tabla,
   Td,
   Th,
-  EncabezadoPagina,
 } from '@/componentes/ui';
-import { api, ErrorDeApi } from '@/lib/api';
 import { useRecurso } from '@/lib/use-recurso';
-import { fecha } from '@/lib/utilidades';
+import { FormularioGrupo } from './formulario-grupo';
+import { GestionAsignacion } from './gestion-asignacion';
+import { GestionInscripciones } from './gestion-inscripciones';
+import type { Grupo } from './tipos';
 
-interface Grupo {
-  readonly id: string;
-  readonly clave: string;
-  readonly cupo: number;
-  readonly inscritos: number;
-  readonly materia: { clave: string; nombre: string };
-  readonly periodo: { clave: string; estado: string };
-  readonly aula: { clave: string; edificio: string };
-  readonly programa: { clave: string; nombre: string };
-  readonly horario: { dia: string; horaInicio: string; horaFin: string }[];
-  readonly profesor: { idPublico: string; correo: string } | null;
-}
-
-interface VersionAsignacion {
-  readonly id: string;
-  readonly version: number;
-  readonly desdeEl: string;
-  readonly hastaEl: string | null;
-  readonly vigente: boolean;
-  readonly motivo: string;
-  readonly profesor: { idPublico: string; correo: string };
-  readonly autor: { idPublico: string; correo: string };
-}
 
 export default function PaginaGrupos() {
   const { actor } = useSesion();
-  const esJefe = actor?.permisos.includes('asignacion-docente:crear') ?? false;
+  const tiene = (p: string) => actor?.permisos.some((x) => x === p) ?? false;
+  const esJefe = tiene('asignacion-docente:crear');
+  const puedeCrear = tiene('grupo:crear');
+  const puedeInscribir = tiene('inscripcion:crear');
+  const esProfesor = tiene('calificacion:crear');
 
   const grupos = useRecurso<Grupo[]>('/grupos');
   const [expandido, setExpandido] = React.useState<string | null>(null);
+  const [creando, setCreando] = React.useState(false);
+  const columnas = 6 + (esJefe || puedeInscribir || esProfesor ? 1 : 0);
 
   return (
     <>
@@ -61,9 +44,28 @@ export default function PaginaGrupos() {
         descripcion={
           esJefe
             ? 'Grupos de tu programa. El alcance lo determina tu adscripcion, no un filtro de esta pantalla.'
-            : 'Grupos con asignacion docente vigente a tu nombre.'
+            : esProfesor
+              ? 'Grupos con asignacion docente vigente a tu nombre.'
+              : 'Grupos visibles para tu cuenta.'
+        }
+        acciones={
+          puedeCrear ? (
+            <Boton onClick={() => setCreando((v) => !v)} aria-expanded={creando}>
+              <Add16Regular aria-hidden />
+              Nuevo grupo
+            </Boton>
+          ) : null
         }
       />
+
+      {creando ? (
+        <FormularioGrupo
+          alTerminar={() => {
+            setCreando(false);
+            grupos.recargar();
+          }}
+        />
+      ) : null}
 
       <Panel titulo="Listado">
         {grupos.cargando ? (
@@ -86,7 +88,7 @@ export default function PaginaGrupos() {
                 <Th>Horario</Th>
                 <Th>Profesor</Th>
                 <Th>Inscritos</Th>
-                {esJefe ? <Th>Historial</Th> : null}
+                {columnas > 6 ? <Th>Acciones</Th> : null}
               </tr>
             </thead>
             <tbody>
@@ -97,9 +99,7 @@ export default function PaginaGrupos() {
                     <Td>{grupo.materia.nombre}</Td>
                     <Td>
                       <span className="font-mono text-xs">{grupo.periodo.clave}</span>{' '}
-                      {grupo.periodo.estado === 'cerrado' ? (
-                        <Insignia tono="neutro">Cerrado</Insignia>
-                      ) : null}
+                      {grupo.periodo.estado === 'cerrado' ? <Insignia tono="neutro">Cerrado</Insignia> : null}
                     </Td>
                     <Td className="text-xs">
                       {grupo.horario.map((bloque) => (
@@ -109,36 +109,47 @@ export default function PaginaGrupos() {
                       ))}
                     </Td>
                     <Td className="text-xs">
-                      {grupo.profesor ? (
-                        grupo.profesor.correo
-                      ) : (
-                        <Insignia tono="aviso">Sin asignar</Insignia>
-                      )}
+                      {grupo.profesor ? grupo.profesor.correo : <Insignia tono="aviso">Sin asignar</Insignia>}
                     </Td>
                     <Td className="font-mono text-xs">
                       {grupo.inscritos}/{grupo.cupo}
                     </Td>
-                    {esJefe ? (
+                    {columnas > 6 ? (
                       <Td>
-                        <Boton
-                          variante="contorno"
-                          tamano="sm"
-                          aria-expanded={expandido === grupo.id}
-                          onClick={() => setExpandido(expandido === grupo.id ? null : grupo.id)}
-                        >
-                          {expandido === grupo.id ? 'Ocultar' : 'Ver'}
-                        </Boton>
+                        <div className="flex flex-wrap gap-2">
+                          {esProfesor ? (
+                            <Boton asChild variante="contorno" tamano="sm">
+                              <Link href={`/panel/calificaciones?grupo=${grupo.id}`}>
+                                <HatGraduation20Regular className="h-4 w-4" aria-hidden />
+                                Calificar
+                              </Link>
+                            </Boton>
+                          ) : null}
+                          {esJefe || puedeInscribir ? (
+                            <Boton
+                              variante="contorno"
+                              tamano="sm"
+                              aria-expanded={expandido === grupo.id}
+                              onClick={() => setExpandido(expandido === grupo.id ? null : grupo.id)}
+                            >
+                              {expandido === grupo.id ? 'Ocultar' : 'Gestionar'}
+                            </Boton>
+                          ) : null}
+                        </div>
                       </Td>
                     ) : null}
                   </tr>
 
-                  {esJefe && expandido === grupo.id ? (
+                  {expandido === grupo.id ? (
                     <tr>
-                      <Td className="bg-panel/60" >
-                        <div className="col-span-full">
-                          <HistorialAsignaciones grupoId={grupo.id} alCambiar={grupos.recargar} />
+                      <td colSpan={columnas} className="border-b border-borde/50 bg-panel/60 px-3 py-4">
+                        <div className="grid gap-6 xl:grid-cols-2">
+                          {esJefe ? <GestionAsignacion grupo={grupo} alCambiar={grupos.recargar} /> : null}
+                          {puedeInscribir ? (
+                            <GestionInscripciones grupo={grupo} alCambiar={grupos.recargar} />
+                          ) : null}
                         </div>
-                      </Td>
+                      </td>
                     </tr>
                   ) : null}
                 </React.Fragment>
@@ -148,123 +159,5 @@ export default function PaginaGrupos() {
         )}
       </Panel>
     </>
-  );
-}
-
-/**
- * Historial completo de asignaciones docentes (RF-031).
- *
- * Muestra TODAS las versiones, incluidas las cerradas, y no solo la vigente.
- * Es deliberado: el ataque del escenario 5 de SC-LAB-001 termina en un estado
- * final perfectamente consistente —el jefe se asigna, califica y revierte— y
- * lo unico que lo delata es la version intermedia. Una pantalla que solo
- * mostrara "el profesor actual" lo ocultaria igual de bien que un campo
- * sobrescribible.
- */
-function HistorialAsignaciones({
-  grupoId,
-  alCambiar,
-}: {
-  readonly grupoId: string;
-  readonly alCambiar: () => void;
-}) {
-  const historial = useRecurso<VersionAsignacion[]>(`/grupos/${grupoId}/asignaciones`);
-  const [asignando, setAsignando] = React.useState(false);
-  const [error, setError] = React.useState<ErrorDeApi | null>(null);
-
-  async function asignar(evento: React.FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-    const datos = new FormData(evento.currentTarget);
-    setAsignando(true);
-    setError(null);
-    try {
-      await api.post(`/grupos/${grupoId}/asignaciones`, {
-        grupoId,
-        profesorId: String(datos.get('profesorId') ?? ''),
-        desde: new Date().toISOString(),
-        hasta: null,
-        motivo: String(datos.get('motivo') ?? ''),
-      });
-      historial.recargar();
-      alCambiar();
-      (evento.target as HTMLFormElement).reset();
-    } catch (e) {
-      setError(e instanceof ErrorDeApi ? e : null);
-    } finally {
-      setAsignando(false);
-    }
-  }
-
-  return (
-    <div className="space-y-4 py-2">
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-tenue">
-          Historial de asignaciones
-        </h3>
-        {historial.cargando ? (
-          <EstadoCargando />
-        ) : historial.error ? (
-          <EstadoError mensaje={historial.error.message} onReintentar={historial.recargar} />
-        ) : !historial.datos?.length ? (
-          <EstadoVacio mensaje="Este grupo nunca ha tenido profesor asignado." />
-        ) : (
-          <ol className="mt-2 space-y-2">
-            {historial.datos.map((version) => (
-              <li
-                key={version.id}
-                className="rounded border border-borde bg-fondo p-2 text-xs"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono">v{version.version}</span>
-                  <span className="font-medium">{version.profesor.correo}</span>
-                  {version.vigente ? (
-                    <Insignia tono="exito">Vigente</Insignia>
-                  ) : (
-                    <Insignia tono="neutro">Cerrada</Insignia>
-                  )}
-                </div>
-                <p className="mt-1 text-tenue">
-                  {fecha(version.desdeEl)} → {version.hastaEl ? fecha(version.hastaEl) : 'sin fin'}
-                </p>
-                <p className="mt-1">
-                  <span className="text-tenue">Motivo:</span> {version.motivo}
-                </p>
-                <p className="text-tenue">Registrado por {version.autor.correo}</p>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
-
-      <form onSubmit={asignar} className="max-w-md space-y-3 border-t border-borde pt-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-tenue">
-          Asignar profesor
-        </h3>
-
-        <Campo
-          id={`profesor-${grupoId}`}
-          etiqueta="Identificador del profesor"
-          ayuda="La asignacion anterior se cierra; no se sobrescribe."
-          requerido
-        >
-          {(props) => <Entrada {...props} name="profesorId" className="font-mono text-xs" />}
-        </Campo>
-
-        <Campo
-          id={`motivo-${grupoId}`}
-          etiqueta="Motivo"
-          ayuda="Queda en la bitacora. Minimo 10 caracteres."
-          requerido
-        >
-          {(props) => <AreaTexto {...props} name="motivo" rows={2} />}
-        </Campo>
-
-        {error ? <EstadoError mensaje={error.message} correlationId={error.correlationId} /> : null}
-
-        <Boton type="submit" tamano="sm" cargando={asignando}>
-          Registrar asignacion
-        </Boton>
-      </form>
-    </div>
   );
 }

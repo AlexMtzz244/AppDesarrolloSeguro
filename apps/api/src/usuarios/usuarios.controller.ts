@@ -83,6 +83,25 @@ export class UsuariosController {
     return this.usuarios.cambiarEstado(actor, id, cuerpo.activo, cuerpo.motivo);
   }
 
+  @Post(':id/desbloquear')
+  @Politica({
+    permiso: 'usuario:modificar',
+    relacion: 'no-aplica',
+    exigeMfa: true,
+    exigeMotivo: true,
+  })
+  @ApiOperation({
+    summary: 'Levanta el bloqueo por intentos fallidos de una cuenta (RNFS-015)',
+    description: 'El bloqueo manual es desactivar la cuenta (PATCH :id/estado).',
+  })
+  async desbloquear(
+    @ActorActual() actor: Actor,
+    @Param('id') id: string,
+    @Body(validar(z.object({ motivo: esquemaMotivo }))) cuerpo: { motivo: string },
+  ) {
+    return this.usuarios.desbloquear(actor, id, cuerpo.motivo);
+  }
+
   @Post(':id/roles')
   @Politica({ permiso: 'rol:administrar', relacion: 'no-aplica', exigeMfa: true, exigeMotivo: true })
   @ApiOperation({

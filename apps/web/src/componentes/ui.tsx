@@ -195,7 +195,7 @@ Selector.displayName = 'Selector';
 interface PropsCampo {
   readonly id: string;
   readonly etiqueta: string;
-  readonly ayuda?: string;
+  readonly ayuda?: string | undefined;
   readonly error?: string | undefined;
   readonly requerido?: boolean;
   readonly children: (props: {

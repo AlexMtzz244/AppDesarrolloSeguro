@@ -43,6 +43,16 @@ export class SolicitudesController {
     return this.solicitudes.misSolicitudes(actor);
   }
 
+  @Get('bandeja')
+  @Politica({ permiso: 'solicitud:modificar', relacion: 'no-aplica' })
+  @ApiOperation({
+    summary: 'Bandeja de atencion: solicitudes de todos los titulares (RF-062)',
+    description: 'Solo para quien atiende solicitudes. Las abiertas primero, por vencimiento.',
+  })
+  async bandeja() {
+    return this.solicitudes.bandeja();
+  }
+
   @Get(':id')
   @Politica({ permiso: 'solicitud:leer', relacion: soloMiSolicitud })
   @ApiOperation({ summary: 'Historial y adjuntos de una solicitud propia (RF-062)' })

@@ -89,6 +89,9 @@ export const esquemaCorregirCalificacion = z.object({
   calificacionId: esquemaId,
   valorNuevo: esquemaValorCalificacion,
   motivo: esquemaMotivo,
+  // Solo cuando el periodo del grupo ya cerro (RF-033): referencia la
+  // autorizacion extraordinaria que concedio OTRA cuenta, y se consume.
+  autorizacionId: esquemaId.optional(),
 });
 
 export type CorregirCalificacion = z.infer<typeof esquemaCorregirCalificacion>;

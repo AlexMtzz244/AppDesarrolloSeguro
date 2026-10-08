@@ -209,7 +209,7 @@ producción con datos semilla presentes falla de forma explícita (RNFS-058).
 
 ```bash
 pnpm test        # 39 unitarias y estructurales; no necesitan infraestructura
-pnpm test:int    # 72 pruebas: las 13 negativas obligatorias
+pnpm test:int    # 84 pruebas, incluidas las 13 negativas obligatorias
 pnpm build       # compila API y web
 ```
 
