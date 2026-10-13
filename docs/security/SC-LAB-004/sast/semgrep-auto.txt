@@ -1,0 +1,132 @@
+                    
+                    
+┌──────────────────┐
+│ 27 Code Findings │
+└──────────────────┘
+                                 
+    /src/.github/workflows/ci.yml
+    ❯❱ yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+          ❰❰ Blocking ❱❱
+          GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently   
+          repointed by the action owner, enabling supply-chain attacks — as seen in the trivy-action and kics-
+          github-action compromises. Pin the reference to a full 40-character commit SHA instead, e.g. `uses: 
+          actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608`.                                         
+          Details: https://sg.run/2LgAL                                                                       
+                                                                                                              
+           27┆ - uses: actions/checkout@v4
+            ⋮┆----------------------------------------
+           28┆ - uses: pnpm/action-setup@v4
+            ⋮┆----------------------------------------
+           29┆ - uses: actions/setup-node@v4
+            ⋮┆----------------------------------------
+           63┆ - uses: actions/checkout@v4
+            ⋮┆----------------------------------------
+           64┆ - uses: pnpm/action-setup@v4
+            ⋮┆----------------------------------------
+           65┆ - uses: actions/setup-node@v4
+            ⋮┆----------------------------------------
+           89┆ - uses: actions/checkout@v4
+            ⋮┆----------------------------------------
+           94┆ - uses: gitleaks/gitleaks-action@v2
+            ⋮┆----------------------------------------
+          103┆ - uses: actions/checkout@v4
+            ⋮┆----------------------------------------
+          104┆ - uses: pnpm/action-setup@v4
+            ⋮┆----------------------------------------
+          105┆ - uses: actions/setup-node@v4
+            ⋮┆----------------------------------------
+          117┆ - uses: actions/upload-artifact@v4
+            ⋮┆----------------------------------------
+          128┆ - uses: actions/checkout@v4
+            ⋮┆----------------------------------------
+          129┆ - uses: pnpm/action-setup@v4
+            ⋮┆----------------------------------------
+          130┆ - uses: actions/setup-node@v4
+            ⋮┆----------------------------------------
+          137┆ - uses: actions/upload-artifact@v4
+                                       
+    /src/.github/workflows/cve-scan.yml
+    ❯❱ yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+          ❰❰ Blocking ❱❱
+          GitHub Actions step uses a mutable tag or branch reference. Tags and branch names can be silently   
+          repointed by the action owner, enabling supply-chain attacks — as seen in the trivy-action and kics-
+          github-action compromises. Pin the reference to a full 40-character commit SHA instead, e.g. `uses: 
+          actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608`.                                         
+          Details: https://sg.run/2LgAL                                                                       
+                                                                                                              
+           30┆ - uses: actions/checkout@v4
+            ⋮┆----------------------------------------
+           31┆ - uses: pnpm/action-setup@v4
+            ⋮┆----------------------------------------
+           32┆ - uses: actions/setup-node@v4
+            ⋮┆----------------------------------------
+           51┆ - uses: actions/upload-artifact@v4
+            ⋮┆----------------------------------------
+           64┆ uses: actions/github-script@v7
+                            
+    /src/apps/api/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user.missing-user
+          ❰❰ Blocking ❱❱
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/Gbvn                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root CMD ["pnpm", "--filter", "api", "dev"]
+           25┆ CMD ["pnpm", "--filter", "api", "dev"]
+                                              
+    /src/apps/api/src/identidad/mfa.service.ts
+   ❯❯❱ javascript.node-crypto.security.gcm-no-tag-length.gcm-no-tag-length
+          ❰❰ Blocking ❱❱
+          The call to 'createDecipheriv' with the Galois Counter Mode (GCM) mode of operation is missing an 
+          expected authentication tag length. If the expected authentication tag length is not specified or 
+          otherwise checked, the application might be tricked into verifying a shorter-than-expected        
+          authentication tag. This can be abused by an attacker to spoof ciphertexts or recover the implicit
+          authentication key of GCM, allowing arbitrary forgeries.                                          
+          Details: https://sg.run/NbGG1                                                                     
+                                                                                                            
+           66┆ const descifrador = createDecipheriv(
+           67┆   'aes-256-gcm',
+           68┆   this.clave,
+           69┆   Buffer.from(datos.nonce, 'base64'),
+           70┆ );
+                            
+    /src/apps/web/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user.missing-user
+          ❰❰ Blocking ❱❱
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/Gbvn                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root CMD ["pnpm", "--filter", "web", "dev"]
+           17┆ CMD ["pnpm", "--filter", "web", "dev"]
+                            
+    /src/pnpm-workspace.yaml
+    ❯❱ package_managers.pnpm.pnpm-block-exotic-sub-dependencies.pnpm-block-exotic-sub-dependencies
+          ❰❰ Blocking ❱❱
+          Missing or incorrect blockExoticSubdeps. Set `blockExoticSubdeps: true` to transitive dependencies
+          from being installed from untrusted sources. Added in: v10.26.0 Reference:                        
+          https://pnpm.io/settings#blockexoticsubdeps                                                       
+          Details: https://sg.run/RrWRv                                                                     
+                                                                                                            
+            1┆ packages:
+   
+    ❯❱ package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-release-age
+          ❰❰ Blocking ❱❱
+          This pnpm workspace configuration does not set a minimum release age. Newly published packages can
+          be malicious or unstable. Add `minimumReleaseAge: 10080` (minutes) to wait at least seven days    
+          before installing newly published package versions. Added in: v10.16.0 Reference:                 
+          https://pnpm.io/settings#minimumreleaseage                                                        
+          Details: https://sg.run/Aj0o0                                                                     
+                                                                                                            
+            1┆ packages:
+   
+    ❯❱ package_managers.pnpm.pnpm-trust-policy.pnpm-trust-policy
+          ❰❰ Blocking ❱❱
+          Missing or incorrect trustPolicy. Set `trustPolicy: no-downgrade` to prevent malicious package
+          updates from downgrading security settings. Added in: v10.21.0 Reference:                     
+          https://pnpm.io/settings#trustpolicy                                                          
+          Details: https://sg.run/B2Kz7                                                                 
+                                                                                                        
+            1┆ packages:

@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset='utf-8'><title>04 - docker compose ps (servicios de infraestructura)</title><style>body{background:#0d1117;color:#c9d1d9;font-family:Consolas,'Cascadia Mono',monospace;font-size:13px;margin:0;padding:24px 32px}
+h1{font-size:20px;color:#58a6ff;margin:0 0 4px}h2{font-size:15px;color:#7ee787;margin:22px 0 6px}.meta{color:#8b949e;margin-bottom:16px}
+pre{white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.45}table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border:1px solid #30363d;padding:4px 8px;text-align:left;vertical-align:top;word-break:break-word}th{background:#161b22;color:#58a6ff}
+.ERROR,.critical,.high{color:#ff7b72}.WARNING,.moderate,.MEDIUM{color:#d29922}.low{color:#8b949e}.ok{color:#7ee787}.warn{color:#d29922}.bad{color:#ff7b72}</style></head><body><h1>04 - docker compose ps (servicios de infraestructura)</h1><div class='meta'>SC-LAB-004 - generado 2026-10-13 08:55 - proyecto SecureCampus (localhost)</div><h2>docker compose ps -a</h2><pre>--- docker compose ps
+NAME                        IMAGE                             COMMAND                  SERVICE      CREATED       STATUS                     PORTS
+securecampus-clamav-1       clamav/clamav:stable              &quot;/init&quot;                  clamav       2 weeks ago   Up 24 minutes (healthy)    127.0.0.1:3310-&gt;3310/tcp
+securecampus-mailpit-1      axllent/mailpit:latest            &quot;/mailpit&quot;               mailpit      2 weeks ago   Up 24 minutes (healthy)    127.0.0.1:1025-&gt;1025/tcp, 127.0.0.1:8025-&gt;8025/tcp
+securecampus-minio-1        cgr.dev/chainguard/minio:latest   &quot;/usr/bin/minio serv…&quot;   minio        5 days ago    Up 24 minutes (healthy)    127.0.0.1:9000-9001-&gt;9000-9001/tcp
+securecampus-minio-init-1   cgr.dev/chainguard/minio:latest   &quot;/bin/sh -c &#x27; mc ali…&quot;   minio-init   5 days ago    Exited (0) 5 minutes ago   
+securecampus-postgres-1     postgres:16-alpine                &quot;docker-entrypoint.s…&quot;   postgres     2 weeks ago   Up 24 minutes (healthy)    127.0.0.1:5433-&gt;5432/tcp
+securecampus-redis-1        redis:7-alpine                    &quot;docker-entrypoint.s…&quot;   redis        2 weeks ago   Up 24 minutes (healthy)    127.0.0.1:6379-&gt;6379/tcp
+</pre><h2>Comprobaciones HTTP</h2><pre>http://localhost:3000 -&gt; 200 bytes=17628
+http://localhost:3001/api/docs -&gt; 200 bytes=3126
+http://localhost:3001/api/docs-json -&gt; 200 bytes=20015
+contenedor curl host.docker.internal:3000 -&gt; 307
+contenedor curl host.docker.internal:3001 -&gt; 404
+contenedor curl host.docker.internal:3001/api/docs -&gt; 200
+contenedor curl host.docker.internal:3001/api/docs-json -&gt; 200</pre></body></html>

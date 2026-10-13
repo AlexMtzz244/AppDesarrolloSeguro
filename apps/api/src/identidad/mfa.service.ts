@@ -63,10 +63,14 @@ export class MfaService {
     nonce: string;
     tagAutenticacion: string;
   }): string {
+    // Sin `authTagLength`, Node acepta tags truncados (hasta 4 bytes) y quien
+    // pudiera alterar la fila tendria que adivinar muchos menos bits para que
+    // un secreto manipulado pase la verificacion (SC-LAB-004, hallazgo SAST).
     const descifrador = createDecipheriv(
       'aes-256-gcm',
       this.clave,
       Buffer.from(datos.nonce, 'base64'),
+      { authTagLength: 16 },
     );
     descifrador.setAuthTag(Buffer.from(datos.tagAutenticacion, 'base64'));
     return Buffer.concat([
