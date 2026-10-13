@@ -125,7 +125,7 @@ jobs:
       # RNFS-055: sin inventario no se puede responder "usamos esa biblioteca,
       # en que version y donde" el dia que salga el CVE (SC-LAB-003 §6).
       - name: Generar SBOM
-        run: pnpm sbom
+        run: pnpm sbom:generar
       - uses: actions/upload-artifact@v4
         with:
           name: sbom

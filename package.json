@@ -19,7 +19,7 @@
     "db:migrate": "pnpm --filter api db:migrate",
     "db:seed": "pnpm --filter api db:seed",
     "db:reset": "pnpm --filter api db:reset",
-    "sbom": "cyclonedx-npm --output-format JSON --output-file sbom.json --ignore-npm-errors",
+    "sbom:generar": "pnpm dlx @cyclonedx/cdxgen@12.8.5 --type js --no-install-deps --project-name securecampus -o sbom.json .",
     "secrets:scan": "gitleaks detect --source . --redact --verbose",
     "secrets:staged": "gitleaks protect --staged --redact --verbose",
     "prepare": "husky"
@@ -37,7 +37,6 @@
     ]
   },
   "devDependencies": {
-    "@cyclonedx/cyclonedx-npm": "^4.0.0",
     "@eslint/js": "^9.39.5",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^7.1.1",
