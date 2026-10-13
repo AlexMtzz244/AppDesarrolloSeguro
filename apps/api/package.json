@@ -10,6 +10,7 @@
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run",
     "test:int": "vitest run --config vitest.integracion.config.ts",
+    "postinstall": "prisma generate",
     "db:generar": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -64,6 +65,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "unplugin-swc": "^2.0.0",
-    "vitest": "^2.1.8"
+    "vite": "^7.3.7",
+    "vitest": "^4.1.11"
   }
 }

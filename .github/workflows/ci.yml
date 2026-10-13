@@ -18,6 +18,23 @@ concurrency:
 
 env:
   NODE_VERSION: "22"
+  # La API valida su configuracion completa al arrancar (RNFS-052) aunque las
+  # pruebas no usen MinIO, ClamAV ni SMTP: los documentos se insertan
+  # directamente en la base. Estos valores solo satisfacen la validacion; los
+  # secretos de verdad se generan en cada ejecucion (paso "Generar secretos").
+  DATABASE_URL: postgresql://securecampus_app:postgres_ci_app@localhost:5432/securecampus_test?schema=public
+  DATABASE_URL_MIGRACIONES: postgresql://securecampus_owner:postgres_ci@localhost:5432/securecampus_test?schema=public
+  POSTGRES_APP_USER: securecampus_app
+  POSTGRES_APP_PASSWORD: postgres_ci_app
+  REDIS_URL: redis://localhost:6379
+  S3_ENDPOINT: http://localhost:9000
+  S3_ACCESS_KEY_ID: ci-sin-uso
+  S3_SECRET_ACCESS_KEY: ci-sin-uso-s3
+  S3_BUCKET_DOCUMENTOS: documentos
+  S3_BUCKET_CUARENTENA: cuarentena
+  CLAMAV_HOST: localhost
+  SMTP_HOST: localhost
+  SMTP_FROM: no-responder@securecampus.test
 
 jobs:
   calidad:
@@ -67,20 +84,15 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generar secretos
+        run: |
+          echo "SESION_SECRETO_FIRMA=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "MFA_CLAVE_CIFRADO=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       - name: Preparar esquema y rol de aplicacion restringido
         run: pnpm --filter api ci:preparar-bd
-        env:
-          DATABASE_URL_MIGRACIONES: postgresql://securecampus_owner:postgres_ci@localhost:5432/securecampus_test?schema=public
-          DATABASE_URL: postgresql://securecampus_app:postgres_ci_app@localhost:5432/securecampus_test?schema=public
-          POSTGRES_APP_USER: securecampus_app
-          POSTGRES_APP_PASSWORD: postgres_ci_app
       # Aqui corren las 13 pruebas negativas obligatorias que no requieren
       # navegador. Una falla en cualquiera bloquea el merge.
       - run: pnpm test:int
-        env:
-          DATABASE_URL: postgresql://securecampus_app:postgres_ci_app@localhost:5432/securecampus_test?schema=public
-          DATABASE_URL_MIGRACIONES: postgresql://securecampus_owner:postgres_ci@localhost:5432/securecampus_test?schema=public
-          REDIS_URL: redis://localhost:6379
 
   secretos:
     name: Escaneo de secretos (historial completo)
@@ -124,6 +136,31 @@ jobs:
     name: E2E esenciales
     runs-on: ubuntu-latest
     needs: [calidad]
+    # Las pruebas de navegador necesitan la aplicacion completa: base sembrada
+    # con las cuentas de desarrollo, API y web corriendo.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: securecampus_test
+          POSTGRES_USER: securecampus_owner
+          POSTGRES_PASSWORD: postgres_ci
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+        ports: ["5432:5432"]
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+        ports: ["6379:6379"]
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -133,6 +170,29 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: Generar secretos
+        run: |
+          echo "SESION_SECRETO_FIRMA=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "MFA_CLAVE_CIFRADO=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - name: Preparar y sembrar la base
+        run: |
+          pnpm --filter api ci:preparar-bd
+          pnpm --filter api db:seed
+      - name: Compilar API y web
+        run: |
+          pnpm --filter api build
+          pnpm --filter web build
+      - name: Arrancar API y web
+        run: |
+          nohup node apps/api/dist/main.js > api.log 2>&1 &
+          nohup pnpm --filter web start > web.log 2>&1 &
+          for url in http://localhost:3001/api/docs-json http://localhost:3000/ingresar; do
+            for i in $(seq 1 60); do
+              curl -sf -o /dev/null "$url" && break
+              sleep 2
+            done
+            curl -sf -o /dev/null "$url" || { echo "No responde: $url"; tail -50 api.log web.log; exit 1; }
+          done
       - run: pnpm e2e
       - uses: actions/upload-artifact@v4
         if: always()
