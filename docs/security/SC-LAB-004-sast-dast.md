@@ -174,6 +174,9 @@ proyecto, la autorización por relación usuario-recurso, solo lo demostró la p
 | `authTagLength: 16` en el descifrado GCM de MFA | SAST (Semgrep) | Reanálisis: 0 hallazgos; `tsc` sin errores |
 | vitest 2 → 4 (elimina tinypool con 2 CVE críticos) | SAST (`pnpm audit`) | `pnpm audit --audit-level=critical`: 0 críticas; 39 pruebas unitarias y 84 de integración en verde |
 | ESLint configurado, `contracts` compilado en postinstall, cliente Prisma generado en postinstall, entorno de CI completo, job E2E con la app levantada | CI rojo desde antes del laboratorio | Contenedor `node:22` con Postgres y Redis: lint, tipos, unitarias, integración y arranque completo |
+| Segunda ronda (2026-10-16): `nodemailer` 6 → 10, `next` → 15.5.28, `file-type` → 21, overrides de `multer`, `postcss`, `sharp`, `vite`, `js-yaml`, `source-map-js`, `postcss-selector-parser` | SCA (`pnpm audit`) | `pnpm audit`: 45 → 2 (`braces` sin parche y `deepmerge-ts` de la CLI de Prisma, ambas de desarrollo); lint, tipos y 26 pruebas unitarias de la API en verde |
+| CSP con nonce por petición (`apps/web/src/middleware.ts`), COOP y CORP en `next.config.mjs` | DAST (ZAP 10038, 90004) | Build de producción OK; cabecera y nonce del script de tema comprobados con `next start` |
+| Acciones de GitHub fijadas por SHA; `blockExoticSubdeps`, `trustPolicy: no-downgrade` y `minimumReleaseAge` en pnpm; auditoría de CI a `--prod --audit-level=high` | SAST (Semgrep) | Pendiente de reescaneo con Semgrep |
 
 ## 8. Reflexión
 

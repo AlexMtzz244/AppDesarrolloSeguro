@@ -1,3 +1,12 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Endurecimiento de cadena de suministro (SC-LAB-004, reglas Semgrep de pnpm).
+blockExoticSubdeps: true
+trustPolicy: no-downgrade
+# semver@6.3.1 se publico sin provenance aunque versiones anteriores la tenian; falso positivo conocido.
+trustPolicyExclude:
+  - semver@6.3.1
+# Minutos: ignora versiones publicadas hace menos de 24 h.
+minimumReleaseAge: 1440

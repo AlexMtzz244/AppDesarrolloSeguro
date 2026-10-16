@@ -26,6 +26,15 @@
   },
   "pnpm": {
     "//": "Lista blanca explicita de paquetes que pueden ejecutar scripts de instalacion. Por omision pnpm los bloquea todos, que es el comportamiento seguro frente a un ataque de cadena de suministro por postinstall. Cada entrada aqui es una decision consciente, no un permiso global.",
+    "overrides": {
+      "multer": ">=2.4.0",
+      "postcss": ">=8.5.23",
+      "sharp": ">=0.35.5",
+      "js-yaml": ">=5.4.1",
+      "source-map-js": ">=1.2.2",
+      "postcss-selector-parser": ">=7.1.6",
+      "vite": "^7.3.7"
+    },
     "onlyBuiltDependencies": [
       "@prisma/client",
       "@prisma/engines",
