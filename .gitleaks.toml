@@ -25,6 +25,16 @@ description = "Cadena de conexion de Postgres con contrasena embebida"
 regex = '''postgres(ql)?://[^:\s]+:[^@\s]+@'''
 tags = ["secreto", "base-de-datos"]
 
+# Contrasenas de los contenedores de servicio de CI: existen solo durante el
+# job, escuchan en el localhost del runner y no pueden generarse por ejecucion
+# porque los services de GitHub Actions arrancan antes que los pasos. Se
+# compara contra la coincidencia completa (el "secreto" de esta regla es el
+# grupo `ql`) y se limita a esos dos roles con esas dos contrasenas exactas.
+[[rules.allowlists]]
+description = "Credenciales efimeras de los services de CI"
+regexTarget = "match"
+regexes = ['''^postgres(ql)?://securecampus_(owner:postgres_ci|app:postgres_ci_app)@$''']
+
 # --- Exclusiones -----------------------------------------------------------
 
 [allowlist]

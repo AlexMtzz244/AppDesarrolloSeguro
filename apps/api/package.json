@@ -10,6 +10,7 @@
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run",
     "test:int": "vitest run --config vitest.integracion.config.ts",
+    "postinstall": "prisma generate",
     "db:generar": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -35,10 +36,10 @@
     "bullmq": "^5.34.6",
     "clamscan": "^2.4.0",
     "cookie-parser": "^1.4.7",
-    "file-type": "^19.6.0",
+    "file-type": "^21.3.1",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.2",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^10.0.6",
     "otplib": "^12.0.1",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
@@ -64,6 +65,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "unplugin-swc": "^2.0.0",
-    "vitest": "^2.1.8"
+    "vite": "^7.3.7",
+    "vitest": "^4.1.11"
   }
 }

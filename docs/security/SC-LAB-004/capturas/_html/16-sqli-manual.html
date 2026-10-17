@@ -1,0 +1,138 @@
+<!doctype html><html><head><meta charset='utf-8'><title>16 - Inyeccion SQL: pruebas manuales (login y parametros)</title><style>body{background:#0d1117;color:#c9d1d9;font-family:Consolas,'Cascadia Mono',monospace;font-size:13px;margin:0;padding:24px 32px}
+h1{font-size:20px;color:#58a6ff;margin:0 0 4px}h2{font-size:15px;color:#7ee787;margin:22px 0 6px}.meta{color:#8b949e;margin-bottom:16px}
+pre{white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.45}table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border:1px solid #30363d;padding:4px 8px;text-align:left;vertical-align:top;word-break:break-word}th{background:#161b22;color:#58a6ff}
+.ERROR,.critical,.high{color:#ff7b72}.WARNING,.moderate,.MEDIUM{color:#d29922}.low{color:#8b949e}.ok{color:#7ee787}.warn{color:#d29922}.bad{color:#ff7b72}</style></head><body><h1>16 - Inyeccion SQL: pruebas manuales (login y parametros)</h1><div class='meta'>SC-LAB-004 - generado 2026-10-13 08:54 - proyecto SecureCampus (localhost)</div><pre>##### C. Inyeccion SQL
+=== C1 Login correo = &#x27; OR &#x27;1&#x27;=&#x27;1
+PETICION: POST http://localhost:3001/api/auth/login  cuerpo: {&quot;correo&quot;:&quot;&#x27; OR &#x27;1&#x27;=&#x27;1&quot;,&quot;contrasena&quot;:&quot;x&quot;}
+CODIGO HTTP: 400
+--- cabeceras (resumen):
+HTTP/1.1 400 Bad Request
+X-Content-Type-Options: nosniff
+X-Correlation-Id: b456bf05-5fba-4fe6-aad1-f6a6168ba64f
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;VALIDACION&quot;,&quot;mensaje&quot;:&quot;Revisa los datos enviados.&quot;,&quot;correlationId&quot;:&quot;b456bf05-5fba-4fe6-aad1-f6a6168ba64f&quot;,&quot;campos&quot;:{&quot;correo&quot;:[&quot;Correo electronico invalido&quot;]}}
+
+
+=== C2 Login correo = admin@securecampus.edu.mx&#x27;--
+PETICION: POST http://localhost:3001/api/auth/login  cuerpo: {&quot;correo&quot;:&quot;admin@securecampus.edu.mx&#x27;--&quot;,&quot;contrasena&quot;:&quot;x&quot;}
+CODIGO HTTP: 400
+--- cabeceras (resumen):
+HTTP/1.1 400 Bad Request
+X-Content-Type-Options: nosniff
+X-Correlation-Id: ed88dc8e-23ca-4829-af4a-f54453afc3b3
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;VALIDACION&quot;,&quot;mensaje&quot;:&quot;Revisa los datos enviados.&quot;,&quot;correlationId&quot;:&quot;ed88dc8e-23ca-4829-af4a-f54453afc3b3&quot;,&quot;campos&quot;:{&quot;correo&quot;:[&quot;Correo electronico invalido&quot;]}}
+
+
+=== C3 Login correo con formato valido + SQLi: a&#x27;or&#x27;1&#x27;=&#x27;1@securecampus.edu.mx
+PETICION: POST http://localhost:3001/api/auth/login  cuerpo: {&quot;correo&quot;:&quot;a&#x27;or&#x27;1&#x27;=&#x27;1@securecampus.edu.mx&quot;,&quot;contrasena&quot;:&quot;x&quot;}
+CODIGO HTTP: 400
+--- cabeceras (resumen):
+HTTP/1.1 400 Bad Request
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 0e0c01e1-738a-4a58-93ac-c6804a28f0a4
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;VALIDACION&quot;,&quot;mensaje&quot;:&quot;Revisa los datos enviados.&quot;,&quot;correlationId&quot;:&quot;0e0c01e1-738a-4a58-93ac-c6804a28f0a4&quot;,&quot;campos&quot;:{&quot;correo&quot;:[&quot;Correo electronico invalido&quot;]}}
+
+
+=== C4 Login profesor con contrasena = &#x27; OR &#x27;1&#x27;=&#x27;1
+PETICION: POST http://localhost:3001/api/auth/login  cuerpo: {&quot;correo&quot;:&quot;profesor@securecampus.edu.mx&quot;,&quot;contrasena&quot;:&quot;&#x27; OR &#x27;1&#x27;=&#x27;1&quot;}
+CODIGO HTTP: 401
+--- cabeceras (resumen):
+HTTP/1.1 401 Unauthorized
+X-Content-Type-Options: nosniff
+X-Correlation-Id: f8bf9eff-0c27-43c1-aa76-333bfea990d9
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;CREDENCIALES_INVALIDAS&quot;,&quot;mensaje&quot;:&quot;Correo o contrasena incorrectos.&quot;,&quot;correlationId&quot;:&quot;f8bf9eff-0c27-43c1-aa76-333bfea990d9&quot;}
+
+
+=== C5 Login profesor con contrasena = x&#x27;; DROP TABLE usuarios;--
+PETICION: POST http://localhost:3001/api/auth/login  cuerpo: {&quot;correo&quot;:&quot;profesor@securecampus.edu.mx&quot;,&quot;contrasena&quot;:&quot;x&#x27;; DROP TABLE usuarios;--&quot;}
+CODIGO HTTP: 401
+--- cabeceras (resumen):
+HTTP/1.1 401 Unauthorized
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 0fdd181d-fa15-4f7e-a553-e38e1ffd4112
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;CREDENCIALES_INVALIDAS&quot;,&quot;mensaje&quot;:&quot;Correo o contrasena incorrectos.&quot;,&quot;correlationId&quot;:&quot;0fdd181d-fa15-4f7e-a553-e38e1ffd4112&quot;}
+
+
+=== C6 Perfil por ID = 1&#x27; OR &#x27;1&#x27;=&#x27;1 (sesion A)
+PETICION: GET http://localhost:3001/api/perfiles/1&#x27;%20OR%20&#x27;1&#x27;=&#x27;1  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 6f94c48c-2a40-4c06-9aed-dda6a23d65b7
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;6f94c48c-2a40-4c06-9aed-dda6a23d65b7&quot;}
+
+
+=== C7 grupos?periodo= &#x27; OR &#x27;1&#x27;=&#x27;1 (sesion A)
+PETICION: GET http://localhost:3001/api/grupos?periodo=1&#x27;%20OR%20&#x27;1&#x27;%3D&#x27;1  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 6e5b17cf-bce5-4837-92c3-fcd35a260d24
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;6e5b17cf-bce5-4837-92c3-fcd35a260d24&quot;}
+
+
+=== C8 calificaciones/corregibles?matricula= &#x27; OR &#x27;1&#x27;=&#x27;1 (sesion A)
+PETICION: GET http://localhost:3001/api/calificaciones/corregibles?matricula=1&#x27;%20OR%20&#x27;1&#x27;%3D&#x27;1  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: d12e809b-255d-4db8-9d8e-6ceff4e0008c
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;d12e809b-255d-4db8-9d8e-6ceff4e0008c&quot;}
+
+
+=== C9 solicitudes/:id con &#x27; OR 1=1-- (sesion A)
+PETICION: GET http://localhost:3001/api/solicitudes/1&#x27;%20OR%201=1--  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: eb1cf21b-c052-4521-b922-f331c70ee0f4
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;eb1cf21b-c052-4521-b922-f331c70ee0f4&quot;}
+
+
+=== C10 documentos/:id/descargar?motivo=SQLi (sesion A)
+PETICION: GET http://localhost:3001/api/documentos/1&#x27;%20OR%20&#x27;1&#x27;%3D&#x27;1/descargar?motivo=1&#x27;%20OR%20&#x27;1&#x27;%3D&#x27;1  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 7a1735d7-9690-4bde-93d0-d25a4862d8b0
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;7a1735d7-9690-4bde-93d0-d25a4862d8b0&quot;}
+
+
+=== C11 Recuperacion con correo SQLi
+PETICION: POST http://localhost:3001/api/auth/recuperacion/solicitar  cuerpo: {&quot;correo&quot;:&quot;a&#x27;or&#x27;1&#x27;=&#x27;1@securecampus.edu.mx&quot;}
+CODIGO HTTP: 400
+--- cabeceras (resumen):
+HTTP/1.1 400 Bad Request
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 0a06dd49-a6be-49f3-a168-e23ce2cd5fb2
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;VALIDACION&quot;,&quot;mensaje&quot;:&quot;Revisa los datos enviados.&quot;,&quot;correlationId&quot;:&quot;0a06dd49-a6be-49f3-a168-e23ce2cd5fb2&quot;,&quot;campos&quot;:{&quot;correo&quot;:[&quot;Correo electronico invalido&quot;]}}
+
+
+</pre></body></html>

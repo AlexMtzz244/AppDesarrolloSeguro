@@ -1,0 +1,38 @@
+                   
+                   
+┌─────────────────┐
+│ 3 Code Findings │
+└─────────────────┘
+                            
+    /src/apps/api/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user.missing-user
+          ❰❰ Blocking ❱❱
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/Gbvn                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root CMD ["pnpm", "--filter", "api", "dev"]
+           25┆ CMD ["pnpm", "--filter", "api", "dev"]
+                            
+    /src/apps/web/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user.missing-user
+          ❰❰ Blocking ❱❱
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/Gbvn                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root CMD ["pnpm", "--filter", "web", "dev"]
+           17┆ CMD ["pnpm", "--filter", "web", "dev"]
+                            
+    /src/pnpm-workspace.yaml
+    ❯❱ package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-release-age
+          ❰❰ Blocking ❱❱
+          This pnpm workspace configuration does not set a minimum release age. Newly published packages can
+          be malicious or unstable. Add `minimumReleaseAge: 10080` (minutes) to wait at least seven days    
+          before installing newly published package versions. Added in: v10.16.0 Reference:                 
+          https://pnpm.io/settings#minimumreleaseage                                                        
+          Details: https://sg.run/Aj0o0                                                                     
+                                                                                                            
+           12┆ minimumReleaseAge: 1440

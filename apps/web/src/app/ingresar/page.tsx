@@ -131,9 +131,12 @@ export default function PaginaIngresar() {
 
       {paso === 'credenciales' ? (
         <form onSubmit={enviarCredenciales} className="space-y-5" noValidate>
+          {/* Sin autoFocus: el primer tabulador debe llegar al salto de
+              contenido (RNFS-060); un foco inicial en este campo lo
+              saltaria para teclado y lectores de pantalla. */}
           <Campo id="correo" etiqueta="Correo institucional" requerido error={campos['correo']?.[0]}>
             {(props) => (
-              <Entrada {...props} name="correo" type="email" autoComplete="username" autoFocus />
+              <Entrada {...props} name="correo" type="email" autoComplete="username" />
             )}
           </Campo>
 
