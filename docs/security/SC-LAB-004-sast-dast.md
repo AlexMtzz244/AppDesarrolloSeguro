@@ -178,6 +178,8 @@ proyecto, la autorización por relación usuario-recurso, solo lo demostró la p
 | CSP con nonce por petición (`apps/web/src/middleware.ts`), COOP y CORP en `next.config.mjs` | DAST (ZAP 10038, 90004) | Build de producción OK; cabecera y nonce del script de tema comprobados con `next start` |
 | Acciones de GitHub fijadas por SHA; `blockExoticSubdeps`, `trustPolicy: no-downgrade` y `minimumReleaseAge` en pnpm; auditoría de CI a `--prod --audit-level=high` | SAST (Semgrep) | Pendiente de reescaneo con Semgrep |
 
+Reanálisis con las mismas herramientas tras estos cambios: [comparativa antes / después](SC-LAB-004-comparativa-antes-despues.md).
+
 ## 8. Reflexión
 
 1. **¿Por qué 0 findings en SAST no equivale a aplicación segura?** Porque solo dice que *las reglas
