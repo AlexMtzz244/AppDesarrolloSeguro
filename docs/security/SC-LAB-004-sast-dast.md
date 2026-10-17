@@ -1,4 +1,6 @@
-# SC-LAB-004 · Análisis SAST + DAST de SecureCampus
+# SC-LAB-004 · Análisis de Seguridad Estático y Dinámico (SAST + DAST) — SecureCampus
+
+> **Pregunta guía:** ¿Qué puede descubrir una herramienta al analizar el código fuente y qué puede descubrir al interactuar con una aplicación en ejecución?
 
 Fecha: 2026-10-13 · Commit analizado: `2864ebd` (`main`, 151 archivos rastreados)
 Evidencia completa: [`SC-LAB-004/`](SC-LAB-004/) — logs por paso, salidas crudas, informes y capturas.
@@ -64,6 +66,15 @@ contenido, rutas reportadas como `/src/...`.
 | 4–24 | `github-actions-mutable-action-tag` | `ci.yml` (16), `cve-scan.yml` (5) | WARNING | **Verdadero positivo, riesgo de cadena de suministro.** `actions/checkout@v4` y similares apuntan a una etiqueta movible; fijar por SHA impide que una etiqueta re-publicada inyecte código en CI. Pendiente (ver §9). |
 | 25–27 | `pnpm-block-exotic-sub-dependencies`, `pnpm-missing-minimum-release-age`, `pnpm-trust-policy` | `pnpm-workspace.yaml:1` | MEDIUM | Endurecimiento recomendado de pnpm (bloquear dependencias de git/tarball, retrasar versiones recién publicadas). Pendiente. |
 
+**Evidencia SAST** (hallazgo principal, en el formato del manual):
+
+| Registro | Detalle |
+|---|---|
+| Regla / hallazgo | `javascript.node-crypto.security.gcm-no-tag-length` (ERROR, bloqueante): `createDecipheriv` en modo GCM sin longitud de tag de autenticación esperada. |
+| Archivo / línea | `apps/api/src/identidad/mfa.service.ts:66` |
+| ¿Qué evidencia aporta? | Señala el patrón inseguro sin ejecutar la aplicación: Node acepta tags GCM truncados (de hasta 4 bytes) si no se fija `authTagLength`. No demuestra por sí sola que sea explotable; para hacerlo habría que poder escribir en la fila que guarda el secreto TOTP cifrado. |
+| ¿Coincide con el análisis humano? | **No.** El análisis previo (§3) se centró en SQL crudo, `dangerouslySetInnerHTML`, `new Function`, la CSP y la autorización, y no anticipó este hallazgo. Sí coincidió en lo que Semgrep **no** marcó: ningún `$executeRawUnsafe` con entrada de usuario. |
+
 Complementos SAST:
 
 - **`pnpm audit`** (SCA): 45 vulnerabilidades — 3 critical, 18 high, 22 moderate, 2 low
@@ -84,9 +95,11 @@ const descifrador = createDecipheriv('aes-256-gcm', this.clave, nonce, { authTag
 ```
 
 Compatible con los datos existentes: `getAuthTag()` produce 16 bytes por omisión.
-Reanálisis de `apps/api/src/identidad/` con `--config auto`: **210 reglas, 8 archivos, 0 hallazgos**
-([`07-semgrep-retest-identidad.log`](SC-LAB-004/logs/07-semgrep-retest-identidad.log)).
+**Resultado del equipo:** reanálisis de `apps/api/src/identidad/` con `--config auto`: **210 reglas, 8 archivos,
+0 hallazgos** ([`07-semgrep-retest-identidad.log`](SC-LAB-004/logs/07-semgrep-retest-identidad.log)).
 Eso significa que las reglas ejecutadas ya no reportan nada en ese directorio, no que el módulo sea seguro.
+Tras la segunda ronda de correcciones (2026-10-16), el reescaneo completo bajó de 27 a 3 hallazgos; el detalle
+está en la [comparativa antes / después](SC-LAB-004-comparativa-antes-despues.md).
 
 ## 5. DAST
 
@@ -96,6 +109,16 @@ Eso significa que las reglas ejecutadas ya no reportan nada en ese directorio, n
 |---|---|---|---|---|
 | Web `:3000` | 59 | 8 | 0 | **10038 CSP Header Not Set** (Medium, 3); 90004 COEP/COOP/CORP ausentes (Low); 10044 Big Redirect; 10110 Dangerous JS Functions; 2 Private IP Disclosure |
 | API `:3001/api/docs` | 61 | 6 | 0 | 10055 CSP wildcard y `style-src 'unsafe-inline'` (Medium); 10063 Permissions-Policy; 10096 Timestamp Disclosure |
+
+Hallazgos del baseline, en el formato del manual:
+
+| Hallazgo baseline | ¿Qué observa? | ¿Requiere análisis? |
+|---|---|---|
+| CSP Header Not Set [10038] (web) | Política de contenido ausente | Sí: verdadero positivo |
+| COEP / COOP / CORP [90004] (web) | Cabeceras de aislamiento entre orígenes ausentes | Sí, opcional |
+| CSP wildcard y `style-src 'unsafe-inline'` [10055] (API) | CSP laxa en `/api/docs` | Sí: limitado a Swagger UI |
+| Dangerous JS Functions [10110], Private IP Disclosure [2] (web) | Código de los chunks de `next dev` | Sí: ruido del entorno de desarrollo |
+| Big Redirect [10044] (web) | El `307` de `/` a `/panel` lleva cuerpo | Informativo |
 
 Interpretación, alerta por alerta:
 
@@ -116,6 +139,9 @@ Interpretación, alerta por alerta:
 | API scan guiado por OpenAPI (79 URLs) | 119 | 0 | 0 | PASS | PASS |
 | API scan autenticado (cookie de estudiante.a) | 119 | 0 | 0 | PASS | PASS |
 | Full scan web (`-m 5 -T 30`) | 137 | 5 | 0 | PASS | PASS |
+
+**Resultado del equipo:** Cross Site Scripting (Reflected) [40012] y SQL Injection [40018] quedaron en PASS
+en los tres escaneos activos. A diferencia de la mini-app del manual, aquí no hubo ningún XSS que localizar.
 
 Límites de esta evidencia, dichos sin rodeos:
 
@@ -167,7 +193,7 @@ que corregir. React escapa toda interpolación por omisión, la API responde JSO
 No hubo ni un hallazgo en común: cada técnica vio una capa distinta. Y el control más importante del
 proyecto, la autorización por relación usuario-recurso, solo lo demostró la prueba manual de IDOR.
 
-## 7. Cambios hechos a partir del análisis
+## 7. Cambios hechos a partir del análisis y evidencia en GitHub
 
 | Cambio | Origen | Verificación |
 |---|---|---|
@@ -177,6 +203,17 @@ proyecto, la autorización por relación usuario-recurso, solo lo demostró la p
 | Segunda ronda (2026-10-16): `nodemailer` 6 → 10, `next` → 15.5.28, `file-type` → 21, overrides de `multer`, `postcss`, `sharp`, `vite`, `js-yaml`, `source-map-js`, `postcss-selector-parser` | SCA (`pnpm audit`) | `pnpm audit`: 45 → 2 (`braces` sin parche y `deepmerge-ts` de la CLI de Prisma, ambas de desarrollo); lint, tipos y 26 pruebas unitarias de la API en verde |
 | CSP con nonce por petición (`apps/web/src/middleware.ts`), COOP y CORP en `next.config.mjs` | DAST (ZAP 10038, 90004) | Build de producción OK; cabecera y nonce del script de tema comprobados con `next start` |
 | Acciones de GitHub fijadas por SHA; `blockExoticSubdeps`, `trustPolicy: no-downgrade` y `minimumReleaseAge` en pnpm; auditoría de CI a `--prod --audit-level=high` | SAST (Semgrep) | Pendiente de reescaneo con Semgrep |
+
+Trazabilidad en Git (rama `security/sc-lab-004-sast-dast`):
+
+| Commit | Autor | Fecha | Contenido |
+|---|---|---|---|
+| `08ae6fd` | AlexMtzz244 | 2026-10-13 | Evidencia SAST y DAST (en curso) |
+| `d69d37b` | AlexMtzz244 | 2026-10-13 | Reparación de los jobs de CI |
+| `3bf13d3` | AlexMtzz244 | 2026-10-13 | `authTagLength` en el descifrado GCM y este informe |
+| `68ce509` | AlexMtzz244 | 2026-10-13 | SBOM con cdxgen |
+| `00974c5` | AlexMtzz244 | 2026-10-13 | Quitar `autoFocus` del correo (accesibilidad) |
+| `24f2bc2` | DiegoSR01 | 2026-10-16 | Dependencias, CSP con nonce, hardening de CI y pnpm |
 
 Reanálisis con las mismas herramientas tras estos cambios: [comparativa antes / después](SC-LAB-004-comparativa-antes-despues.md).
 
@@ -216,3 +253,14 @@ Reanálisis con las mismas herramientas tras estos cambios: [comparativa antes /
    roles profesor y jefe de carrera.
 6. `docker-compose.yml` sigue apuntando a `quay.io/minio/*`, que respondió 401 al hacer pull; los contenedores
    locales existentes usan `cgr.dev/chainguard/minio`. Conviene alinear el archivo.
+
+## 10. Cobertura de la rúbrica del laboratorio
+
+| Criterio | Puntos | Dónde se cubre |
+|---|---|---|
+| Ejecución e interpretación SAST | 20 | §3, §4.1–4.2 |
+| Corrección SQL + reanálisis | 15 | §4.3 (aquí el hallazgo verdadero fue el tag GCM; no hay SQL inyectable, §3) |
+| Baseline y Active Scan DAST | 20 | §5.1–5.2 |
+| Validación / corrección / retesting XSS | 25 | §5.3–5.4 (no hubo XSS; se documenta la CSP como control y su retest en la comparativa) |
+| Comparación SAST vs DAST | 10 | §6 |
+| Evidencia Git/GitHub y reflexión | 10 | §7, §8 |
