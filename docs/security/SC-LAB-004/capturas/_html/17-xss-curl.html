@@ -1,0 +1,112 @@
+<!doctype html><html><head><meta charset='utf-8'><title>17 - XSS reflejado: pruebas con curl (API y web)</title><style>body{background:#0d1117;color:#c9d1d9;font-family:Consolas,'Cascadia Mono',monospace;font-size:13px;margin:0;padding:24px 32px}
+h1{font-size:20px;color:#58a6ff;margin:0 0 4px}h2{font-size:15px;color:#7ee787;margin:22px 0 6px}.meta{color:#8b949e;margin-bottom:16px}
+pre{white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.45}table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border:1px solid #30363d;padding:4px 8px;text-align:left;vertical-align:top;word-break:break-word}th{background:#161b22;color:#58a6ff}
+.ERROR,.critical,.high{color:#ff7b72}.WARNING,.moderate,.MEDIUM{color:#d29922}.low{color:#8b949e}.ok{color:#7ee787}.warn{color:#d29922}.bad{color:#ff7b72}</style></head><body><h1>17 - XSS reflejado: pruebas con curl (API y web)</h1><div class='meta'>SC-LAB-004 - generado 2026-10-13 08:54 - proyecto SecureCampus (localhost)</div><pre>##### B. XSS reflejado
+=== B1 Login con correo = payload XSS
+PETICION: POST http://localhost:3001/api/auth/login  cuerpo: {&quot;correo&quot;:&quot;&lt;script&gt;alert(1)&lt;/script&gt;&quot;,&quot;contrasena&quot;:&quot;x&quot;}
+CODIGO HTTP: 400
+--- cabeceras (resumen):
+HTTP/1.1 400 Bad Request
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 5a4f1c02-3f07-4137-a078-153cfe35a87f
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;VALIDACION&quot;,&quot;mensaje&quot;:&quot;Revisa los datos enviados.&quot;,&quot;correlationId&quot;:&quot;5a4f1c02-3f07-4137-a078-153cfe35a87f&quot;,&quot;campos&quot;:{&quot;correo&quot;:[&quot;Correo electronico invalido&quot;]}}
+
+
+=== B2 Recuperacion con correo = payload XSS
+PETICION: POST http://localhost:3001/api/auth/recuperacion/solicitar  cuerpo: {&quot;correo&quot;:&quot;&lt;script&gt;alert(1)&lt;/script&gt;&quot;}
+CODIGO HTTP: 400
+--- cabeceras (resumen):
+HTTP/1.1 400 Bad Request
+X-Content-Type-Options: nosniff
+X-Correlation-Id: f61bbde3-fc54-454c-8219-0a6afe968034
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;VALIDACION&quot;,&quot;mensaje&quot;:&quot;Revisa los datos enviados.&quot;,&quot;correlationId&quot;:&quot;f61bbde3-fc54-454c-8219-0a6afe968034&quot;,&quot;campos&quot;:{&quot;correo&quot;:[&quot;Correo electronico invalido&quot;]}}
+
+
+=== B3 Ruta API con payload XSS (sin sesion)
+PETICION: GET http://localhost:3001/api/perfiles/%3Cscript%3Ealert(1)%3C/script%3E
+CODIGO HTTP: 404
+--- cabeceras (resumen):
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+X-Correlation-Id: ef8b3d00-ad59-4aee-888a-366105e36f79
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;HTTP_404&quot;,&quot;mensaje&quot;:&quot;Cannot GET /api/perfiles/%3Cscript%3Ealert(1)%3C/script%3E&quot;,&quot;correlationId&quot;:&quot;ef8b3d00-ad59-4aee-888a-366105e36f79&quot;}
+
+
+=== B4 Ruta API con payload XSS (con sesion A)
+PETICION: GET http://localhost:3001/api/perfiles/%3Cscript%3Ealert(1)%3C/script%3E  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 404
+--- cabeceras (resumen):
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 996de605-48f1-4062-82eb-b1882bba351d
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;HTTP_404&quot;,&quot;mensaje&quot;:&quot;Cannot GET /api/perfiles/%3Cscript%3Ealert(1)%3C/script%3E&quot;,&quot;correlationId&quot;:&quot;996de605-48f1-4062-82eb-b1882bba351d&quot;}
+
+
+=== B5 Ruta inexistente API con payload XSS
+PETICION: GET http://localhost:3001/api/%3Cscript%3Ealert(1)%3C/script%3E
+CODIGO HTTP: 404
+--- cabeceras (resumen):
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 0a6bc790-d577-4fb9-930c-9e7f13f84e43
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;HTTP_404&quot;,&quot;mensaje&quot;:&quot;Cannot GET /api/%3Cscript%3Ealert(1)%3C/script%3E&quot;,&quot;correlationId&quot;:&quot;0a6bc790-d577-4fb9-930c-9e7f13f84e43&quot;}
+
+
+=== B6 Query XSS en grupos?periodo= (sesion A)
+PETICION: GET http://localhost:3001/api/grupos?periodo=%3Cscript%3Ealert(1)%3C/script%3E  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: a58750e0-1168-498f-9cdb-231c5acc8acf
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;a58750e0-1168-498f-9cdb-231c5acc8acf&quot;}
+
+
+=== B7 Query XSS en calificaciones/corregibles?matricula= (sesion A)
+PETICION: GET http://localhost:3001/api/calificaciones/corregibles?matricula=%3Cscript%3Ealert(1)%3C/script%3E  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: d5717ed5-8610-4e00-af07-703e5ff9a33a
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;d5717ed5-8610-4e00-af07-703e5ff9a33a&quot;}
+
+
+=== B8 Web /ingresar?next=payload
+PETICION: GET http://localhost:3000/ingresar?next=%3Cscript%3Ealert(1)%3C/script%3E&amp;error=%3Cimg%20src=x%20onerror=alert(1)%3E&amp;q=%3Cscript%3Ealert(1)%3C/script%3E
+CODIGO HTTP: 200
+--- cabeceras (resumen):
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+Content-Type: text/html; charset=utf-8
+--- cuerpo (max 600 car.):
+&lt;!DOCTYPE html&gt;&lt;html lang=&quot;es&quot; class=&quot;__variable_d8ebd1&quot;&gt;&lt;head&gt;&lt;meta charSet=&quot;utf-8&quot;/&gt;&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;/&gt;&lt;link rel=&quot;stylesheet&quot; href=&quot;/_next/static/css/app/layout.css?v=1791902954770&quot; data-precedence=&quot;next_static/css/app/layout.css&quot;/&gt;&lt;link rel=&quot;preload&quot; as=&quot;script&quot; fetchPriority=&quot;low&quot; href=&quot;/_next/static/chunks/webpack.js?v=1791902954770&quot;/&gt;&lt;script src=&quot;/_next/static/chunks/main-app.js?v=1791902954770&quot; async=&quot;&quot;&gt;&lt;/script&gt;&lt;script src=&quot;/_next/static/chunks/app-pages-internals.js&quot; async=&quot;&quot;&gt;&lt;/script&gt;&lt;script src=&quot;/_next/static/chunks/app/layout.js&quot; as...[truncado, total 28256]
+
+=== B9 Web ruta inexistente con payload
+PETICION: GET http://localhost:3000/%3Cscript%3Ealert(1)%3C/script%3E
+CODIGO HTTP: 404
+--- cabeceras (resumen):
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+Content-Type: text/html; charset=utf-8
+--- cuerpo (max 600 car.):
+&lt;!DOCTYPE html&gt;&lt;html lang=&quot;es&quot; class=&quot;__variable_d8ebd1&quot;&gt;&lt;head&gt;&lt;meta charSet=&quot;utf-8&quot;/&gt;&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;/&gt;&lt;link rel=&quot;stylesheet&quot; href=&quot;/_next/static/css/app/layout.css?v=1791902955125&quot; data-precedence=&quot;next_static/css/app/layout.css&quot;/&gt;&lt;link rel=&quot;preload&quot; as=&quot;script&quot; fetchPriority=&quot;low&quot; href=&quot;/_next/static/chunks/webpack.js?v=1791902955125&quot;/&gt;&lt;script src=&quot;/_next/static/chunks/main-app.js?v=1791902955125&quot; async=&quot;&quot;&gt;&lt;/script&gt;&lt;script src=&quot;/_next/static/chunks/app-pages-internals.js&quot; async=&quot;&quot;&gt;&lt;/script&gt;&lt;script src=&quot;/_next/static/chunks/app/layout.js&quot; as...[truncado, total 15871]
+
+B8-verificacion: el HTML de /ingresar contiene &#x27;&lt;script&gt;alert(1)&lt;/script&gt;&#x27; literal: False ; contiene &#x27;onerror=alert(1)&#x27;: True ; contiene &#x27;alert(1)&#x27; en cualquier forma: True
+B9-verificacion: HTML 404 contiene payload literal: False ; contiene &#x27;alert(1)&#x27;: True
+</pre></body></html>

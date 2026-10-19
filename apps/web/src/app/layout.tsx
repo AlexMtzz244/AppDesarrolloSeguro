@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { headers } from 'next/headers';
 import { ProveedorMovimiento } from '@/componentes/movimiento';
 import { ProveedorSesion } from '@/componentes/sesion';
 import { SCRIPT_TEMA } from '@/componentes/tema';
@@ -23,11 +24,12 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function LayoutRaiz({ children }: { children: React.ReactNode }) {
+export default async function LayoutRaiz({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <html lang="es" className={inter.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
       </head>
       <body>
         <a href="#contenido" className="salto-contenido">

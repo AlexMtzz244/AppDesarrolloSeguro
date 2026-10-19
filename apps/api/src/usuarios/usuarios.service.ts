@@ -8,7 +8,6 @@ import {
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import type { Actor } from '../autorizacion/actor.js';
 import { AccesoDenegado, ErrorNegocio } from '../comun/excepciones.filter.js';
-import type { ClienteTransaccion } from '../comun/prisma.service.js';
 import { PrismaService } from '../comun/prisma.service.js';
 import { ContrasenaService } from '../identidad/contrasena.service.js';
 import { LimiteIntentosService } from '../identidad/limite-intentos.service.js';

@@ -19,13 +19,23 @@
     "db:migrate": "pnpm --filter api db:migrate",
     "db:seed": "pnpm --filter api db:seed",
     "db:reset": "pnpm --filter api db:reset",
-    "sbom": "cyclonedx-npm --output-format JSON --output-file sbom.json --ignore-npm-errors",
+    "sbom:generar": "pnpm dlx @cyclonedx/cdxgen@12.8.5 --type js --no-install-deps --project-name securecampus -o sbom.json .",
     "secrets:scan": "gitleaks detect --source . --redact --verbose",
     "secrets:staged": "gitleaks protect --staged --redact --verbose",
     "prepare": "husky"
   },
   "pnpm": {
     "//": "Lista blanca explicita de paquetes que pueden ejecutar scripts de instalacion. Por omision pnpm los bloquea todos, que es el comportamiento seguro frente a un ataque de cadena de suministro por postinstall. Cada entrada aqui es una decision consciente, no un permiso global.",
+    "overrides": {
+      "multer": ">=2.4.0",
+      "postcss": ">=8.5.23",
+      "sharp": ">=0.35.5",
+      "js-yaml": ">=5.4.1",
+      "source-map-js": ">=1.2.2",
+      "postcss-selector-parser": ">=7.1.6",
+      "vite": "^7.3.7",
+      "@prisma/config>deepmerge-ts": "^8.0.2"
+    },
     "onlyBuiltDependencies": [
       "@prisma/client",
       "@prisma/engines",
@@ -37,9 +47,12 @@
     ]
   },
   "devDependencies": {
-    "@cyclonedx/cyclonedx-npm": "^4.0.0",
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "^9.1.7",
     "prettier": "^3.4.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.71.2"
   }
 }
