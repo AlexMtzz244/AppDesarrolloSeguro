@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.17, pytest-9.2.0, pluggy-1.7.0 -- <repo>
+rootdir: <repo>
+plugins: platformdirs-4.14.0
+collecting ... collected 15 items
+
+tests/test_security.py::test_grade_invalid[150] PASSED                   [  6%]
+tests/test_security.py::test_grade_invalid[-1] PASSED                    [ 13%]
+tests/test_security.py::test_grade_invalid[hola] PASSED                  [ 20%]
+tests/test_security.py::test_grade_invalid[] PASSED                      [ 26%]
+tests/test_security.py::test_grade_invalid[NaN] PASSED                   [ 33%]
+tests/test_security.py::test_grade_invalid[Infinity] PASSED              [ 40%]
+tests/test_security.py::test_grade_invalid[None] PASSED                  [ 46%]
+tests/test_security.py::test_grade_invalid[99.999] PASSED                [ 53%]
+tests/test_security.py::test_professor_own_group PASSED                  [ 60%]
+tests/test_security.py::test_professor_other_group_forbidden PASSED      [ 66%]
+tests/test_security.py::test_student_cannot_modify PASSED                [ 73%]
+tests/test_security.py::test_student_cannot_read_other_student PASSED    [ 80%]
+tests/test_security.py::test_csrf_required PASSED                        [ 86%]
+tests/test_security.py::test_logout_revokes PASSED                       [ 93%]
+tests/test_security.py::test_outbox_transaction PASSED                   [100%]
+
+============================= 15 passed in 11.82s ==============================

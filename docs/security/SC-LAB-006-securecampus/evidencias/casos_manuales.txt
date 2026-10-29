@@ -1,0 +1,40 @@
+== Actividad B (profe_ana PUT /grades/3/10)
+85         -> 200 {'grade': '85', 'message': 'Calificación guardada'}
+'99.50'    -> 200 {'grade': '99.50', 'message': 'Calificación guardada'}
+150        -> 400 {'error': 'Calificación inválida'}
+'NaN'      -> 400 {'error': 'Calificación inválida'}
+99.999     -> 400 {'error': 'Calificación inválida'}
+True       -> 400 {'error': 'Calificación inválida'}
+'1e2'      -> 200 {'grade': '1E+2', 'message': 'Calificación guardada'}
+' 70 '     -> 200 {'grade': '70', 'message': 'Calificación guardada'}
+'abc'      -> 400 {'error': 'Calificación inválida'}
+''         -> 400 {'error': 'Calificación inválida'}
+== Actividad C
+Profesor propio / PUT        PUT /grades/3/10 -> 200 {'grade': '90', 'message': 'Calificación guardada'}
+Profesor ajeno / PUT         PUT /grades/4/20 -> 403 {'error': 'Acceso denegado'}
+Profesor ajeno / GET         GET /grades/4/20 -> 403 {'error': 'Acceso denegado'}
+Estudiante ajeno / GET       GET /grades/4/20 -> 403 {'error': 'Acceso denegado'}
+Estudiante propio / GET      GET /grades/3/10 -> 200 {'grade': '90', 'group_id': 10, 'student_id': 3}
+Estudiante propio / PUT      PUT /grades/3/10 -> 403 {'error': 'Acceso denegado'}
+Sin sesion / GET             GET /grades/3/10 -> 401 {'error': 'Autenticación requerida'}
+Sin CSRF / PUT               PUT /grades/3/10 -> 403 {'error': 'CSRF inválido'}
+Admin / PUT                  PUT /grades/3/10 -> 403 {'error': 'Acceso denegado'}
+Admin / GET                  GET /grades/3/10 -> 403 {'error': 'Acceso denegado'}
+Grupo cruzado alumno 4 en g10 PUT /grades/4/10 -> 403 {'error': 'Acceso denegado'}
+== Sesion / logout
+Set-Cookie:  Expires=Thu, 29 Oct 2026 04:34:09 GMT; Max-Age=1800; HttpOnly; Path=/; SameSite=Lax
+logout sin CSRF -> 403
+logout -> 200 ; GET despues -> 401
+login malo -> {'error': 'Credenciales incorrectas'}
+login usuario inexistente -> {'error': 'Credenciales incorrectas'}
+sessions row: ('f72326bb6a3359c2b9cc5374d9984802ecb8f822ecae2252751aeb83329697f6', 1, 32, 1793248446)
+users row: ('profe_ana', 'scrypt:32768:8:1$UjvNJWMnUnm6fbII$f2b1feab75ba164bc4bece6db48a1d3115832ed454667f62028c12dacf1a43ad4faeba827d1af42831030f1a7be2a22cd2bfaad6ee598dc695cd2fc66cbda0d4')
+outbox: [(1, 3, 10, 'Calificación actualizada', 0), (2, 3, 10, 'Calificación actualizada', 0), (3, 3, 10, 'Calificación actualizada', 0)]
+== Errores (app no testing)
+json malformado -> 401 {"error":"Credenciales incorrectas"}
+
+ruta inexistente -> 404 <!doctype html>
+<html lang=en>
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<
