@@ -145,7 +145,7 @@ pnpm test          # Unitarias y estructurales
 pnpm test:int      # Integración: las 13 pruebas negativas obligatorias
 pnpm e2e           # Playwright
 pnpm secrets:scan  # gitleaks sobre el historial completo
-pnpm sbom          # Inventario de dependencias (CycloneDX)
+pnpm sbom:generar  # Inventario de dependencias (CycloneDX)
 ```
 
 **[PRUEBAS.md](PRUEBAS.md)** detalla qué puede y qué no puede cada cuenta, cómo

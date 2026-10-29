@@ -1,0 +1,83 @@
+<!doctype html><html><head><meta charset='utf-8'><title>15 - Cabeceras de seguridad HTTP (web :3000 y API :3001)</title><style>body{background:#0d1117;color:#c9d1d9;font-family:Consolas,'Cascadia Mono',monospace;font-size:13px;margin:0;padding:24px 32px}
+h1{font-size:20px;color:#58a6ff;margin:0 0 4px}h2{font-size:15px;color:#7ee787;margin:22px 0 6px}.meta{color:#8b949e;margin-bottom:16px}
+pre{white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.45}table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border:1px solid #30363d;padding:4px 8px;text-align:left;vertical-align:top;word-break:break-word}th{background:#161b22;color:#58a6ff}
+.ERROR,.critical,.high{color:#ff7b72}.WARNING,.moderate,.MEDIUM{color:#d29922}.low{color:#8b949e}.ok{color:#7ee787}.warn{color:#d29922}.bad{color:#ff7b72}</style></head><body><h1>15 - Cabeceras de seguridad HTTP (web :3000 y API :3001)</h1><div class='meta'>SC-LAB-004 - generado 2026-10-13 08:54 - proyecto SecureCampus (localhost)</div><pre>=== D1 curl -I WEB /ingresar
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: no-referrer
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+Cache-Control: no-store, must-revalidate
+Content-Type: text/html; charset=utf-8
+Date: Tue, 13 Oct 2026 14:49:20 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+=== D2 curl -I WEB /
+HTTP/1.1 307 Temporary Redirect
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: no-referrer
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+location: /panel
+Cache-Control: no-store, must-revalidate
+Content-Type: text/html; charset=utf-8
+Date: Tue, 13 Oct 2026 14:49:20 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+=== D3 curl -I API /api/docs-json
+HTTP/1.1 200 OK
+Content-Security-Policy: default-src &#x27;none&#x27;;base-uri &#x27;none&#x27;;font-src &#x27;self&#x27; https: data:;form-action &#x27;none&#x27;;frame-ancestors &#x27;none&#x27;;img-src &#x27;self&#x27; data:;object-src &#x27;none&#x27;;script-src &#x27;self&#x27;;script-src-attr &#x27;none&#x27;;style-src &#x27;self&#x27; https: &#x27;unsafe-inline&#x27;;upgrade-insecure-requests
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-site
+Origin-Agent-Cluster: ?1
+Referrer-Policy: no-referrer
+X-Content-Type-Options: nosniff
+X-DNS-Prefetch-Control: off
+X-Download-Options: noopen
+X-Frame-Options: SAMEORIGIN
+X-Permitted-Cross-Domain-Policies: none
+X-XSS-Protection: 0
+X-Correlation-Id: 445c7aa2-913d-4b45-af83-1ffea32ec7ae
+Vary: Origin
+Access-Control-Allow-Credentials: true
+Content-Type: application/json; charset=utf-8
+Content-Length: 20030
+ETag: W/&quot;4e3e-6IUvW+PUR50jnaPepV7aZCyQNR4&quot;
+Date: Tue, 13 Oct 2026 14:49:20 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+=== D4 GET API /api/auth/yo (401) cabeceras
+HTTP/1.1 401 Unauthorized
+Content-Security-Policy: default-src &#x27;none&#x27;;base-uri &#x27;none&#x27;;font-src &#x27;self&#x27; https: data:;form-action &#x27;none&#x27;;frame-ancestors &#x27;none&#x27;;img-src &#x27;self&#x27; data:;object-src &#x27;none&#x27;;script-src &#x27;self&#x27;;script-src-attr &#x27;none&#x27;;style-src &#x27;self&#x27; https: &#x27;unsafe-inline&#x27;;upgrade-insecure-requests
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-site
+Origin-Agent-Cluster: ?1
+Referrer-Policy: no-referrer
+X-Content-Type-Options: nosniff
+X-DNS-Prefetch-Control: off
+X-Download-Options: noopen
+X-Frame-Options: SAMEORIGIN
+X-Permitted-Cross-Domain-Policies: none
+X-XSS-Protection: 0
+X-Correlation-Id: f2090417-4b90-4652-b149-08dcd9069753
+Vary: Origin
+Access-Control-Allow-Credentials: true
+Content-Type: application/json; charset=utf-8
+Content-Length: 137
+ETag: W/&quot;89-rPKJezm3uhIEhdU7eDybIGIWqcQ&quot;
+Date: Tue, 13 Oct 2026 14:49:21 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{&quot;codigo&quot;:&quot;SESION_INVALIDA&quot;,&quot;mensaje&quot;:&quot;Credenciales invalidas o sesion expirada.&quot;,&quot;correlationId&quot;:&quot;f2090417-4b90-4652-b149-08dcd9069753&quot;}
+
+</pre></body></html>

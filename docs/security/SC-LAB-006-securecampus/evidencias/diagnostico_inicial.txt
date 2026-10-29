@@ -1,0 +1,301 @@
+FFFFFFFF.FFF...                                                          [100%]
+=================================== FAILURES ===================================
+___________________________ test_grade_invalid[150] ____________________________
+
+client = <FlaskClient <Flask 'src.app'>>, bad = '150'
+
+    @pytest.mark.parametrize('bad',['150','-1','hola','','NaN','Infinity',None,'99.999'])
+    def test_grade_invalid(client,bad):
+        headers=authenticate(client,'profe_ana')
+>       assert client.put('/grades/3/10',json={'grade':bad},headers=headers).status_code==400
+E       AssertionError: assert 200 == 400
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+E        +    where <WrapperTestResponse streamed [200 OK]> = put('/grades/3/10', json={'grade': '150'}, headers={'X-CSRF-Token': '5ZhddiwP6yrusEDCnc5ugJBWvR-JBwzs'})
+E        +      where put = <FlaskClient <Flask 'src.app'>>.put
+
+tests/test_security.py:7: AssertionError
+____________________________ test_grade_invalid[-1] ____________________________
+
+client = <FlaskClient <Flask 'src.app'>>, bad = '-1'
+
+    @pytest.mark.parametrize('bad',['150','-1','hola','','NaN','Infinity',None,'99.999'])
+    def test_grade_invalid(client,bad):
+        headers=authenticate(client,'profe_ana')
+>       assert client.put('/grades/3/10',json={'grade':bad},headers=headers).status_code==400
+E       AssertionError: assert 200 == 400
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+E        +    where <WrapperTestResponse streamed [200 OK]> = put('/grades/3/10', json={'grade': '-1'}, headers={'X-CSRF-Token': 'X-dvNZo8gi4WIvf_ofL1_ZOn9mLkiuOX'})
+E        +      where put = <FlaskClient <Flask 'src.app'>>.put
+
+tests/test_security.py:7: AssertionError
+___________________________ test_grade_invalid[hola] ___________________________
+
+client = <FlaskClient <Flask 'src.app'>>, bad = 'hola'
+
+    @pytest.mark.parametrize('bad',['150','-1','hola','','NaN','Infinity',None,'99.999'])
+    def test_grade_invalid(client,bad):
+        headers=authenticate(client,'profe_ana')
+>       assert client.put('/grades/3/10',json={'grade':bad},headers=headers).status_code==400
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_security.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../venv/lib/python3.13/site-packages/werkzeug/test.py:1176: in put
+    return self.open(*args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/testing.py:235: in open
+    response = super().open(
+../venv/lib/python3.13/site-packages/werkzeug/test.py:1120: in open
+    response_parts = self.run_wsgi_app(request.environ, buffered=buffered)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/werkzeug/test.py:992: in run_wsgi_app
+    rv = run_wsgi_app(self.application, environ, buffered=buffered)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/werkzeug/test.py:1268: in run_wsgi_app
+    app_rv = app(environ, start_response)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:1536: in __call__
+    return self.wsgi_app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:1514: in wsgi_app
+    response = self.handle_exception(e)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:1511: in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:919: in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:917: in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:902: in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/app.py:54: in put_grade
+    try: grade=validar_calificacion(data.get('grade'))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+valor = 'hola'
+
+    def validar_calificacion(valor):
+        # TODO: rechazar valores nulos, booleanos, texto no numérico, NaN, Infinity, fuera de 0..100 y >2 decimales.
+        # No redondear entradas incorrectas.
+>       return Decimal(str(valor))
+               ^^^^^^^^^^^^^^^^^^^
+E       decimal.InvalidOperation: [<class 'decimal.ConversionSyntax'>]
+
+src/validators.py:6: InvalidOperation
+_____________________________ test_grade_invalid[] _____________________________
+
+client = <FlaskClient <Flask 'src.app'>>, bad = ''
+
+    @pytest.mark.parametrize('bad',['150','-1','hola','','NaN','Infinity',None,'99.999'])
+    def test_grade_invalid(client,bad):
+        headers=authenticate(client,'profe_ana')
+>       assert client.put('/grades/3/10',json={'grade':bad},headers=headers).status_code==400
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_security.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../venv/lib/python3.13/site-packages/werkzeug/test.py:1176: in put
+    return self.open(*args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/testing.py:235: in open
+    response = super().open(
+../venv/lib/python3.13/site-packages/werkzeug/test.py:1120: in open
+    response_parts = self.run_wsgi_app(request.environ, buffered=buffered)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/werkzeug/test.py:992: in run_wsgi_app
+    rv = run_wsgi_app(self.application, environ, buffered=buffered)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/werkzeug/test.py:1268: in run_wsgi_app
+    app_rv = app(environ, start_response)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:1536: in __call__
+    return self.wsgi_app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:1514: in wsgi_app
+    response = self.handle_exception(e)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:1511: in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:919: in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:917: in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:902: in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/app.py:54: in put_grade
+    try: grade=validar_calificacion(data.get('grade'))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+valor = ''
+
+    def validar_calificacion(valor):
+        # TODO: rechazar valores nulos, booleanos, texto no numérico, NaN, Infinity, fuera de 0..100 y >2 decimales.
+        # No redondear entradas incorrectas.
+>       return Decimal(str(valor))
+               ^^^^^^^^^^^^^^^^^^^
+E       decimal.InvalidOperation: [<class 'decimal.ConversionSyntax'>]
+
+src/validators.py:6: InvalidOperation
+___________________________ test_grade_invalid[NaN] ____________________________
+
+client = <FlaskClient <Flask 'src.app'>>, bad = 'NaN'
+
+    @pytest.mark.parametrize('bad',['150','-1','hola','','NaN','Infinity',None,'99.999'])
+    def test_grade_invalid(client,bad):
+        headers=authenticate(client,'profe_ana')
+>       assert client.put('/grades/3/10',json={'grade':bad},headers=headers).status_code==400
+E       AssertionError: assert 200 == 400
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+E        +    where <WrapperTestResponse streamed [200 OK]> = put('/grades/3/10', json={'grade': 'NaN'}, headers={'X-CSRF-Token': 'd_ViFfzxDhvPmLOqum79--U48PSTXf4h'})
+E        +      where put = <FlaskClient <Flask 'src.app'>>.put
+
+tests/test_security.py:7: AssertionError
+_________________________ test_grade_invalid[Infinity] _________________________
+
+client = <FlaskClient <Flask 'src.app'>>, bad = 'Infinity'
+
+    @pytest.mark.parametrize('bad',['150','-1','hola','','NaN','Infinity',None,'99.999'])
+    def test_grade_invalid(client,bad):
+        headers=authenticate(client,'profe_ana')
+>       assert client.put('/grades/3/10',json={'grade':bad},headers=headers).status_code==400
+E       AssertionError: assert 200 == 400
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+E        +    where <WrapperTestResponse streamed [200 OK]> = put('/grades/3/10', json={'grade': 'Infinity'}, headers={'X-CSRF-Token': 'UQBZZQV6mMw3DbthFyK3-qObiJT40YXz'})
+E        +      where put = <FlaskClient <Flask 'src.app'>>.put
+
+tests/test_security.py:7: AssertionError
+___________________________ test_grade_invalid[None] ___________________________
+
+client = <FlaskClient <Flask 'src.app'>>, bad = None
+
+    @pytest.mark.parametrize('bad',['150','-1','hola','','NaN','Infinity',None,'99.999'])
+    def test_grade_invalid(client,bad):
+        headers=authenticate(client,'profe_ana')
+>       assert client.put('/grades/3/10',json={'grade':bad},headers=headers).status_code==400
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_security.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../venv/lib/python3.13/site-packages/werkzeug/test.py:1176: in put
+    return self.open(*args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/testing.py:235: in open
+    response = super().open(
+../venv/lib/python3.13/site-packages/werkzeug/test.py:1120: in open
+    response_parts = self.run_wsgi_app(request.environ, buffered=buffered)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/werkzeug/test.py:992: in run_wsgi_app
+    rv = run_wsgi_app(self.application, environ, buffered=buffered)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/werkzeug/test.py:1268: in run_wsgi_app
+    app_rv = app(environ, start_response)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:1536: in __call__
+    return self.wsgi_app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:1514: in wsgi_app
+    response = self.handle_exception(e)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:1511: in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:919: in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:917: in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.13/site-packages/flask/app.py:902: in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/app.py:54: in put_grade
+    try: grade=validar_calificacion(data.get('grade'))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+valor = None
+
+    def validar_calificacion(valor):
+        # TODO: rechazar valores nulos, booleanos, texto no numérico, NaN, Infinity, fuera de 0..100 y >2 decimales.
+        # No redondear entradas incorrectas.
+>       return Decimal(str(valor))
+               ^^^^^^^^^^^^^^^^^^^
+E       decimal.InvalidOperation: [<class 'decimal.ConversionSyntax'>]
+
+src/validators.py:6: InvalidOperation
+__________________________ test_grade_invalid[99.999] __________________________
+
+client = <FlaskClient <Flask 'src.app'>>, bad = '99.999'
+
+    @pytest.mark.parametrize('bad',['150','-1','hola','','NaN','Infinity',None,'99.999'])
+    def test_grade_invalid(client,bad):
+        headers=authenticate(client,'profe_ana')
+>       assert client.put('/grades/3/10',json={'grade':bad},headers=headers).status_code==400
+E       AssertionError: assert 200 == 400
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+E        +    where <WrapperTestResponse streamed [200 OK]> = put('/grades/3/10', json={'grade': '99.999'}, headers={'X-CSRF-Token': '7vYHJ4KImKybSvw9yd8_mNf3Fe2qp3bd'})
+E        +      where put = <FlaskClient <Flask 'src.app'>>.put
+
+tests/test_security.py:7: AssertionError
+_____________________ test_professor_other_group_forbidden _____________________
+
+client = <FlaskClient <Flask 'src.app'>>
+
+    def test_professor_other_group_forbidden(client):
+        headers=authenticate(client,'profe_ana')
+>       assert client.put('/grades/4/20',json={'grade':'80'},headers=headers).status_code==403
+E       AssertionError: assert 200 == 403
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+E        +    where <WrapperTestResponse streamed [200 OK]> = put('/grades/4/20', json={'grade': '80'}, headers={'X-CSRF-Token': 'rHliSmD2i3SBJOdzaDSnuASOj-WfjFC9'})
+E        +      where put = <FlaskClient <Flask 'src.app'>>.put
+
+tests/test_security.py:17: AssertionError
+__________________________ test_student_cannot_modify __________________________
+
+client = <FlaskClient <Flask 'src.app'>>
+
+    def test_student_cannot_modify(client):
+        headers=authenticate(client,'alumna_eli')
+>       assert client.put('/grades/3/10',json={'grade':'99'},headers=headers).status_code==403
+E       AssertionError: assert 200 == 403
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+E        +    where <WrapperTestResponse streamed [200 OK]> = put('/grades/3/10', json={'grade': '99'}, headers={'X-CSRF-Token': 'gYEyRuuWtVeQk2mQS1XNm1UlSLNruFiJ'})
+E        +      where put = <FlaskClient <Flask 'src.app'>>.put
+
+tests/test_security.py:22: AssertionError
+____________________ test_student_cannot_read_other_student ____________________
+
+client = <FlaskClient <Flask 'src.app'>>
+
+    def test_student_cannot_read_other_student(client):
+        authenticate(client,'alumna_eli')
+>       assert client.get('/grades/4/20').status_code==403
+E       AssertionError: assert 200 == 403
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+E        +    where <WrapperTestResponse streamed [200 OK]> = get('/grades/4/20')
+E        +      where get = <FlaskClient <Flask 'src.app'>>.get
+
+tests/test_security.py:26: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_security.py::test_grade_invalid[150] - AssertionError: asse...
+FAILED tests/test_security.py::test_grade_invalid[-1] - AssertionError: asser...
+FAILED tests/test_security.py::test_grade_invalid[hola] - decimal.InvalidOper...
+FAILED tests/test_security.py::test_grade_invalid[] - decimal.InvalidOperatio...
+FAILED tests/test_security.py::test_grade_invalid[NaN] - AssertionError: asse...
+FAILED tests/test_security.py::test_grade_invalid[Infinity] - AssertionError:...
+FAILED tests/test_security.py::test_grade_invalid[None] - decimal.InvalidOper...
+FAILED tests/test_security.py::test_grade_invalid[99.999] - AssertionError: a...
+FAILED tests/test_security.py::test_professor_other_group_forbidden - Asserti...
+FAILED tests/test_security.py::test_student_cannot_modify - AssertionError: a...
+FAILED tests/test_security.py::test_student_cannot_read_other_student - Asser...
+11 failed, 4 passed in 11.81s

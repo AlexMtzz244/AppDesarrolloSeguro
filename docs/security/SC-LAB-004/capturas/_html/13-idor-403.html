@@ -1,0 +1,102 @@
+<!doctype html><html><head><meta charset='utf-8'><title>13 - IDOR / control de acceso: estudiante.a vs perfil de estudiante.b</title><style>body{background:#0d1117;color:#c9d1d9;font-family:Consolas,'Cascadia Mono',monospace;font-size:13px;margin:0;padding:24px 32px}
+h1{font-size:20px;color:#58a6ff;margin:0 0 4px}h2{font-size:15px;color:#7ee787;margin:22px 0 6px}.meta{color:#8b949e;margin-bottom:16px}
+pre{white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.45}table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border:1px solid #30363d;padding:4px 8px;text-align:left;vertical-align:top;word-break:break-word}th{background:#161b22;color:#58a6ff}
+.ERROR,.critical,.high{color:#ff7b72}.WARNING,.moderate,.MEDIUM{color:#d29922}.low{color:#8b949e}.ok{color:#7ee787}.warn{color:#d29922}.bad{color:#ff7b72}</style></head><body><h1>13 - IDOR / control de acceso: estudiante.a vs perfil de estudiante.b</h1><div class='meta'>SC-LAB-004 - generado 2026-10-13 08:54 - proyecto SecureCampus (localhost)</div><pre>=== A3 GET /auth/yo como A
+PETICION: GET http://localhost:3001/api/auth/yo  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 200
+--- cabeceras (resumen):
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 9cb89dcd-daf9-463f-89df-f28539fe2c2b
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;id&quot;:&quot;01M4DVT30R29KJ4J3CTNMN0ZFB&quot;,&quot;correo&quot;:&quot;estudiante.a@securecampus.edu.mx&quot;,&quot;nombre&quot;:&quot;Cesar Adan De La Cruz&quot;,&quot;roles&quot;:[&quot;estudiante&quot;],&quot;permisos&quot;:[&quot;calificacion:leer&quot;,&quot;documento:leer&quot;,&quot;documento:crear&quot;,&quot;solicitud:leer&quot;,&quot;solicitud:crear&quot;,&quot;perfil:leer&quot;,&quot;perfil:modificar&quot;],&quot;mfaActivo&quot;:false,&quot;mfaObligatorio&quot;:false,&quot;programaId&quot;:&quot;01M4DVT2VJTTVPC2NZZ849WJW1&quot;}
+
+=== A4 CONTROL: A pide su propio perfil
+PETICION: GET http://localhost:3001/api/perfiles/01M4DVT30R29KJ4J3CTNMN0ZFB  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 200
+--- cabeceras (resumen):
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 5b1b3cee-9032-4f38-8bc1-877e5123c72a
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;id&quot;:&quot;01M4DVT30R29KJ4J3CTNMN0ZFB&quot;,&quot;correo&quot;:&quot;estudiante.a@securecampus.edu.mx&quot;,&quot;nombre&quot;:&quot;Cesar Adan&quot;,&quot;apellidoPaterno&quot;:&quot;De La Cruz&quot;,&quot;apellidoMaterno&quot;:null,&quot;matricula&quot;:&quot;ISC202601&quot;,&quot;telefono&quot;:null,&quot;programa&quot;:{&quot;idPublico&quot;:&quot;01M4DVT2VJTTVPC2NZZ849WJW1&quot;,&quot;clave&quot;:&quot;ISC&quot;,&quot;nombre&quot;:&quot;Ingenieria en Sistemas Computacionales&quot;},&quot;miembroDesde&quot;:&quot;2026-10-08T13:38:56.668Z&quot;,&quot;actualizadoEl&quot;:&quot;2026-10-08T13:38:56.668Z&quot;}
+
+=== A5 IDOR: A pide perfil de B (se espera 403)
+PETICION: GET http://localhost:3001/api/perfiles/01M4DVT31BZV9FG3X8B90HVP4R  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 5e9ffb1c-1d0c-41ad-bfd2-da459e82b064
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;5e9ffb1c-1d0c-41ad-bfd2-da459e82b064&quot;}
+
+=== A6 IDOR inverso: B pide perfil de A (se espera 403)
+PETICION: GET http://localhost:3001/api/perfiles/01M4DVT30R29KJ4J3CTNMN0ZFB  (cookie jar: jarB.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 059964ce-abca-41fd-8648-e6615dcc0e5b
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;059964ce-abca-41fd-8648-e6615dcc0e5b&quot;}
+
+=== A7 IDOR PATCH: A modifica telefono de B (se espera 403)
+PETICION: PATCH http://localhost:3001/api/perfiles/01M4DVT31BZV9FG3X8B90HVP4R  cuerpo: {&quot;telefono&quot;:&quot;5555555555&quot;}  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 449a91f1-2378-4bcc-9c66-b082ea6b1c73
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;449a91f1-2378-4bcc-9c66-b082ea6b1c73&quot;}
+
+=== A8 Sin sesion: GET /perfiles/{idB} (se espera 401)
+PETICION: GET http://localhost:3001/api/perfiles/01M4DVT31BZV9FG3X8B90HVP4R
+CODIGO HTTP: 401
+--- cabeceras (resumen):
+HTTP/1.1 401 Unauthorized
+X-Content-Type-Options: nosniff
+X-Correlation-Id: b3cff61e-1676-4a6f-aec2-793d00543048
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;SESION_INVALIDA&quot;,&quot;mensaje&quot;:&quot;Credenciales invalidas o sesion expirada.&quot;,&quot;correlationId&quot;:&quot;b3cff61e-1676-4a6f-aec2-793d00543048&quot;}
+
+=== A9 Sin sesion: GET /auth/yo (se espera 401)
+PETICION: GET http://localhost:3001/api/auth/yo
+CODIGO HTTP: 401
+--- cabeceras (resumen):
+HTTP/1.1 401 Unauthorized
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 6d0e653c-de30-40a0-a204-ec48635834d4
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;SESION_INVALIDA&quot;,&quot;mensaje&quot;:&quot;Credenciales invalidas o sesion expirada.&quot;,&quot;correlationId&quot;:&quot;6d0e653c-de30-40a0-a204-ec48635834d4&quot;}
+
+=== A11 Escalada vertical: estudiante A pide GET /usuarios (se espera 403)
+PETICION: GET http://localhost:3001/api/usuarios  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: ba4396ba-a192-4a19-b6e0-abeb6953bc3e
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;ba4396ba-a192-4a19-b6e0-abeb6953bc3e&quot;}
+
+=== A12 Escalada vertical: estudiante A pide GET /auditoria (se espera 403)
+PETICION: GET http://localhost:3001/api/auditoria  (cookie jar: jarA.txt, valores enmascarados)
+CODIGO HTTP: 403
+--- cabeceras (resumen):
+HTTP/1.1 403 Forbidden
+X-Content-Type-Options: nosniff
+X-Correlation-Id: 1d5d3900-b0a6-4d44-aa7a-0e9aec1bdd0f
+Content-Type: application/json; charset=utf-8
+--- cuerpo (max 600 car.):
+{&quot;codigo&quot;:&quot;ACCESO_DENEGADO&quot;,&quot;mensaje&quot;:&quot;No tienes autorizacion para realizar esta operacion.&quot;,&quot;correlationId&quot;:&quot;1d5d3900-b0a6-4d44-aa7a-0e9aec1bdd0f&quot;}</pre></body></html>
