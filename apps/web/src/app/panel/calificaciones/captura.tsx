@@ -1,6 +1,7 @@
 'use client';
 
 import { History16Regular, Save16Regular, Send16Regular } from '@fluentui/react-icons';
+import { parsearCalificacionTexto } from '@securecampus/contracts';
 import * as React from 'react';
 import {
   BarraMensaje,
@@ -45,10 +46,9 @@ function editable(fila: FilaCaptura): boolean {
   return !fila.calificacion || fila.calificacion.estado === 'borrador';
 }
 
+/** Misma regla que el servidor (`esquemaValorCalificacion`), via contracts. */
 function valorValido(texto: string): boolean {
-  if (texto.trim() === '') return false;
-  const n = Number(texto);
-  return Number.isFinite(n) && n >= 0 && n <= 100 && Math.round(n * 100) === n * 100;
+  return parsearCalificacionTexto(texto).ok;
 }
 
 /**
@@ -172,7 +172,7 @@ function ListaCaptura({ grupo }: { readonly grupo: GrupoAsignado }) {
         grupoId: grupo.id,
         calificaciones: cambios.map((f) => ({
           estudianteId: f.estudiante.id,
-          valor: Number(valores[f.estudiante.id]),
+          valor: Number(valores[f.estudiante.id]!.trim()),
         })),
       });
       setAviso(`${r.capturadas} calificacion(es) guardada(s) en borrador.`);

@@ -1,6 +1,7 @@
 'use client';
 
 import { Edit16Regular, Search16Regular } from '@fluentui/react-icons';
+import { parsearCalificacionTexto } from '@securecampus/contracts';
 import * as React from 'react';
 import {
   AreaTexto,
@@ -203,17 +204,26 @@ function FormularioCorreccion({
 
   const [enviando, setEnviando] = React.useState(false);
   const [error, setError] = React.useState<ErrorDeApi | null>(null);
+  const [errorValor, setErrorValor] = React.useState<string | null>(null);
 
   async function enviar(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     const datos = new FormData(evento.currentTarget);
+    // Mismo analisis estricto que el servidor: `type="number"` del navegador
+    // acepta `1e1`, que no es una calificacion valida.
+    const valor = parsearCalificacionTexto(String(datos.get('valorNuevo') ?? ''));
+    if (!valor.ok) {
+      setErrorValor(valor.mensaje);
+      return;
+    }
+    setErrorValor(null);
     setEnviando(true);
     setError(null);
     try {
       const autorizacionId = String(datos.get('autorizacionId') ?? '');
       await api.post(`/calificaciones/${calificacion.id}/corregir`, {
         calificacionId: calificacion.id,
-        valorNuevo: Number(datos.get('valorNuevo')),
+        valorNuevo: valor.valor,
         motivo: String(datos.get('motivo') ?? ''),
         ...(retroactiva && autorizacionId ? { autorizacionId } : {}),
       });
@@ -235,7 +245,12 @@ function FormularioCorreccion({
         </BarraMensaje>
       ) : null}
 
-      <Campo id={`valor-${calificacion.id}`} etiqueta={`Nuevo valor (actual: ${calificacion.valor})`} requerido>
+      <Campo
+        id={`valor-${calificacion.id}`}
+        etiqueta={`Nuevo valor (actual: ${calificacion.valor})`}
+        requerido
+        {...(errorValor ? { error: errorValor } : {})}
+      >
         {(props) => (
           <Entrada
             {...props}

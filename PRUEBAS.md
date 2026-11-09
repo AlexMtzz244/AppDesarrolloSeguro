@@ -136,7 +136,18 @@ un error se cuele sin que nadie lo note:
   retroactivo a la vez, y las once decisiones institucionales están
   catalogadas.
 
-Resultado esperado: `packages/contracts` 13 pasan · `apps/api` 26 pasan ·
+Y las de **SC-LAB-006** (validadores y permisos de calificación, sin base de
+datos, equivalentes a `validators.py` y `permissions.py` del laboratorio):
+
+- `validadores.spec.ts` — la calificación se **rechaza, nunca se redondea**:
+  `99.999`, `1e-7`, `5e-324`, `NaN`, `Infinity`, `null`, booleanos y texto
+  como `0x10` o `1e1`. Cubre el esquema compartido y el analizador del
+  formulario, que son la misma regla en navegador y servidor.
+- `permisos-calificacion.spec.ts` — tablas de verdad de las reglas puras
+  (*deny by default*: solo permite la combinación completa) y los límites de
+  vigencia de la asignación docente.
+
+Resultado esperado: `packages/contracts` 79 pasan · `apps/api` 51 pasan ·
 `apps/web` no tiene unitarias.
 
 ### Nivel 3 — integración (las 13 negativas)
@@ -192,6 +203,14 @@ Qué verifica cada una:
 | 11 | La sesión rota en cada login; cambiar la contraseña revoca todas | `identidad.int.spec.ts` |
 | 12 | La bitácora rechaza UPDATE, DELETE y TRUNCATE | `auditoria.int.spec.ts` |
 | 13 | Escaneo de secretos y auditoría de dependencias | `.github/workflows/ci.yml` |
+
+Además de las 13, `calificaciones.int.spec.ts` es el equivalente de
+`test_security.py` de SC-LAB-006 sobre la app real: un valor inválido
+(`150`, `-1`, `99.999`, `1e-7`, texto, `null`, booleano) responde 400 **sin
+dejar ninguna fila**; un lote con una sola nota inválida o un estudiante no
+inscrito se revierte completo; un estudiante no captura, no ve su borrador y
+no lee la calificación de otro. Con todo, la suite de integración da
+**7 archivos · 105 pruebas**.
 
 La 13 no es una prueba de Vitest: la ejecuta CI. En local se reproduce con:
 

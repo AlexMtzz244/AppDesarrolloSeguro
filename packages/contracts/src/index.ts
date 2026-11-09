@@ -17,3 +17,4 @@ export * from './academico.js';
 export * from './calificaciones.js';
 export * from './documentos.js';
 export * from './auditoria.js';
+export * from './validadores.js';

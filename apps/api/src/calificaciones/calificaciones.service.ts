@@ -8,6 +8,7 @@ import { PeriodosService } from '../academico/periodos.service.js';
 import { AccesoDenegado, ErrorNegocio } from '../comun/excepciones.filter.js';
 import { PrismaService } from '../comun/prisma.service.js';
 import { NotificacionesService } from '../notificaciones/notificaciones.service.js';
+import { puedeModificarCalificacion } from '../autorizacion/permisos-calificacion.js';
 
 /**
  * Calificaciones (RF-040 a RF-046).
@@ -222,7 +223,14 @@ export class CalificacionesService {
 
       for (const entrada of entradas) {
         const estudianteId = porIdPublico.get(entrada.estudianteId);
-        if (!estudianteId || !idsInscritos.has(estudianteId)) {
+        // La asignacion vigente y el periodo abierto ya los resolvio la
+        // politica de la ruta; aqui solo falta la inscripcion de CADA entrada.
+        const decision = puedeModificarCalificacion({
+          tieneAsignacionVigente: true,
+          periodoAbierto: true,
+          estudianteInscrito: estudianteId !== undefined && idsInscritos.has(estudianteId),
+        });
+        if (!estudianteId || !decision.permitido) {
           throw new AccesoDenegado();
         }
 

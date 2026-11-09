@@ -1,5 +1,10 @@
 import type { ContextoRelacion, DecisionRelacion, ResolvedorRelacion } from './politica.decorator.js';
 import { denegar, permitir } from './politica.decorator.js';
+import {
+  puedeConsultarCalificacion,
+  puedeCorregirCalificacion,
+  puedeModificarCalificacion,
+} from './permisos-calificacion.js';
 
 /**
  * Resolvedores de relacion actor-recurso.
@@ -231,8 +236,11 @@ export const grupoAsignadoVigente: ResolvedorRelacion = async ({ actor, params, 
   // profesor ajeno no debe poder distinguir "no es tuyo" de "esta cerrado";
   // ambas respuestas son identicas hacia afuera, pero el motivo tecnico que
   // llega a la bitacora si las separa, y eso es lo que permite investigar.
-  if (grupo.asignaciones.length === 0) return denegar('sin-asignacion-vigente');
-  if (grupo.periodo.estado !== 'abierto') return denegar('periodo-cerrado');
+  const decision = puedeModificarCalificacion({
+    tieneAsignacionVigente: grupo.asignaciones.length > 0,
+    periodoAbierto: grupo.periodo.estado === 'abierto',
+  });
+  if (!decision.permitido) return decision;
 
   return permitir({ grupo, asignacion: grupo.asignaciones[0] });
 };
@@ -264,28 +272,45 @@ export const calificacionVisible: ResolvedorRelacion = async ({ actor, params, p
 
   if (!calificacion) return denegar('calificacion-inexistente');
 
-  if (calificacion.estudianteId === actor.usuarioId) {
-    // El estudiante no ve sus calificaciones en borrador: todavia no son un
-    // hecho, y mostrarlas convertiria cada captura tentativa en una
-    // comunicacion oficial.
-    if (calificacion.estado === 'borrador') return denegar('calificacion-en-borrador');
-    return permitir(calificacion);
+  const esTitular = calificacion.estudianteId === actor.usuarioId;
+
+  // El estudiante no ve sus calificaciones en borrador: todavia no son un
+  // hecho, y mostrarlas convertiria cada captura tentativa en una
+  // comunicacion oficial (regla en `puedeConsultarCalificacion`).
+  let profesorConAsignacionVigente = false;
+  if (!esTitular) {
+    profesorConAsignacionVigente = await tieneAsignacionVigente(
+      prisma,
+      calificacion.grupoId,
+      actor.usuarioId,
+    );
   }
 
+  const decision = puedeConsultarCalificacion({
+    esTitular,
+    estado: calificacion.estado,
+    profesorConAsignacionVigente,
+  });
+  return decision.permitido ? permitir(calificacion) : decision;
+};
+
+async function tieneAsignacionVigente(
+  prisma: ContextoRelacion['prisma'],
+  grupoId: string,
+  profesorId: string,
+): Promise<boolean> {
   const ahora = new Date();
   const asignacion = await prisma.asignacionDocente.findFirst({
     where: {
-      grupoId: calificacion.grupoId,
-      profesorId: actor.usuarioId,
+      grupoId,
+      profesorId,
       desdeEl: { lte: ahora },
       OR: [{ hastaEl: null }, { hastaEl: { gt: ahora } }],
     },
     select: { id: true },
   });
-
-  if (asignacion) return permitir(calificacion);
-  return denegar('calificacion-ajena');
-};
+  return asignacion !== null;
+}
 
 /**
  * Correccion de una calificacion publicada (RF-044).
@@ -319,10 +344,9 @@ export const calificacionPublicadaCorregible: ResolvedorRelacion = async ({
 
   // Una calificacion en borrador no se "corrige": se edita por el flujo
   // ordinario. Admitirlo aqui permitiria saltarse la maquina de estados por
-  // la puerta de atras.
-  if (calificacion.estado === 'borrador') return denegar('calificacion-en-borrador');
-
-  return permitir(calificacion);
+  // la puerta de atras (regla en `puedeCorregirCalificacion`).
+  const decision = puedeCorregirCalificacion({ estado: calificacion.estado });
+  return decision.permitido ? permitir(calificacion) : decision;
 };
 
 // ---------------------------------------------------------------------------

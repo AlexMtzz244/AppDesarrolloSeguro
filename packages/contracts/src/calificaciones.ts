@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { esquemaId, esquemaMotivo } from './comunes.js';
+import { tieneMaximoDosDecimales } from './validadores.js';
 
 /**
  * Contratos de calificaciones. Requisitos RF-040 a RF-046.
@@ -45,9 +46,12 @@ export function transicionPermitida(
  */
 export const esquemaValorCalificacion = z
   .number()
+  .finite('La calificacion debe ser un numero finito')
   .min(0, 'La calificacion minima es 0')
   .max(100, 'La calificacion maxima es 100')
-  .multipleOf(0.01);
+  // No `multipleOf(0.01)`: usa aritmetica de flotantes y deja pasar `1e-7`,
+  // que la columna Decimal(5,2) redondearia en silencio (SC-LAB-006).
+  .refine(tieneMaximoDosDecimales, 'La calificacion admite maximo 2 decimales');
 
 export const esquemaCapturarCalificacion = z.object({
   grupoId: esquemaId,
