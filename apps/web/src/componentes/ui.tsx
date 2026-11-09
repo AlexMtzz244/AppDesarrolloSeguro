@@ -15,6 +15,7 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 import { manejarRevelar } from '@/componentes/movimiento';
+import { iniciarActividad } from '@/lib/actividad';
 import { cn } from '@/lib/utilidades';
 
 /**
@@ -425,19 +426,110 @@ export function EstadoError({
   );
 }
 
-export function EstadoCargando({ etiqueta = 'Cargando' }: { readonly etiqueta?: string }) {
+/**
+ * Mientras un indicador de carga este en pantalla cuenta como actividad: la
+ * barra superior y el esqueleto nunca se contradicen, sin importar si la
+ * espera es una peticion, la carga de la seccion o la verificacion de sesion.
+ */
+function useActividadMientrasVisible() {
+  React.useEffect(() => iniciarActividad(), []);
+}
+
+/** Bloque de esqueleto con barrido. Decorativo: no lo anuncian los lectores. */
+export function Esqueleto({ className }: { readonly className?: string }) {
+  return <div className={cn('esqueleto', className)} aria-hidden />;
+}
+
+/** Anchos alternos para que las filas no parezcan una rejilla artificial. */
+const ANCHOS_CELDA = ['w-3/4', 'w-1/2', 'w-2/3', 'w-5/6', 'w-3/5', 'w-1/3'] as const;
+
+/** Forma de una tabla: cabecera y filas, sin inventar datos. */
+export function EsqueletoTabla({
+  filas = 5,
+  columnas = 4,
+}: {
+  readonly filas?: number;
+  readonly columnas?: number;
+}) {
   return (
-    <div role="status" aria-live="polite" className="space-y-4 p-2">
+    <div className="space-y-3" aria-hidden>
+      <div className="flex gap-4 border-b border-borde pb-2.5">
+        {Array.from({ length: columnas }, (_, c) => (
+          <Esqueleto key={c} className="h-3 flex-1 opacity-70" />
+        ))}
+      </div>
+      {Array.from({ length: filas }, (_, f) => (
+        <div key={f} className="flex items-center gap-4 py-1.5">
+          {Array.from({ length: columnas }, (_, c) => (
+            <div key={c} className="flex-1">
+              <Esqueleto className={cn('h-3.5', ANCHOS_CELDA[(f + c * 2) % ANCHOS_CELDA.length])} />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Forma de un formulario: etiqueta y campo, repetidos, y un boton. */
+export function EsqueletoFormulario({ campos = 3 }: { readonly campos?: number }) {
+  return (
+    <div className="max-w-lg space-y-4" aria-hidden>
+      {Array.from({ length: campos }, (_, i) => (
+        <div key={i} className="space-y-1.5">
+          <Esqueleto className="h-3 w-24" />
+          <Esqueleto className="h-9 w-full" />
+        </div>
+      ))}
+      <Esqueleto className="h-9 w-28" />
+    </div>
+  );
+}
+
+/** Forma de un texto corrido, para contenido sin estructura de tabla. */
+export function EsqueletoTexto({ lineas = 3 }: { readonly lineas?: number }) {
+  const anchos = ['w-11/12', 'w-9/12', 'w-10/12', 'w-8/12'] as const;
+  return (
+    <div className="space-y-2.5" aria-hidden>
+      {Array.from({ length: lineas }, (_, i) => (
+        <Esqueleto key={i} className={cn('h-3.5', anchos[i % anchos.length])} />
+      ))}
+    </div>
+  );
+}
+
+export type VarianteCarga = 'texto' | 'tabla' | 'formulario';
+
+/**
+ * Estado de carga: texto que anuncia la actividad (`role="status"`) y un
+ * esqueleto con la forma de lo que va a aparecer. La variante evita que una
+ * tabla "salte" al llegar los datos.
+ */
+export function EstadoCargando({
+  etiqueta = 'Cargando',
+  variante = 'texto',
+  filas,
+  columnas,
+}: {
+  readonly etiqueta?: string;
+  readonly variante?: VarianteCarga;
+  readonly filas?: number;
+  readonly columnas?: number;
+}) {
+  useActividadMientrasVisible();
+  return (
+    <div role="status" aria-live="polite" aria-busy="true" className="space-y-4 p-2">
       <div className="flex items-center gap-3 text-sm text-tenue">
         <Giro className="h-5 w-5 text-primario" />
         {etiqueta}…
       </div>
-      {/* Esqueleto: da la forma de lo que viene sin inventar datos. */}
-      <div className="space-y-2.5" aria-hidden>
-        <div className="esqueleto h-3.5 w-11/12" />
-        <div className="esqueleto h-3.5 w-9/12" />
-        <div className="esqueleto h-3.5 w-10/12" />
-      </div>
+      {variante === 'tabla' ? (
+        <EsqueletoTabla {...(filas ? { filas } : {})} {...(columnas ? { columnas } : {})} />
+      ) : variante === 'formulario' ? (
+        <EsqueletoFormulario />
+      ) : (
+        <EsqueletoTexto />
+      )}
     </div>
   );
 }
@@ -532,3 +624,95 @@ export const Th = ({ children, className }: { children: React.ReactNode; classNa
 export const Td = ({ children, className }: { children: React.ReactNode; className?: string }) => (
   <td className={cn('border-b border-borde/50 px-3 py-2.5', className)}>{children}</td>
 );
+
+// --- Cargas de seccion completa -------------------------------------------
+
+export type VarianteSeccion = 'inicio' | 'tabla' | 'formulario';
+
+/**
+ * Esqueleto de una seccion entera del panel: encabezado y cuerpo con la forma
+ * de la pantalla real. Lo usan los `loading.tsx` de cada ruta, de modo que al
+ * navegar por el menu se ve la estructura de inmediato y no un hueco.
+ */
+export function CargandoSeccion({
+  variante = 'tabla',
+  etiqueta = 'Cargando seccion',
+}: {
+  readonly variante?: VarianteSeccion;
+  readonly etiqueta?: string;
+}) {
+  useActividadMientrasVisible();
+  return (
+    <div role="status" aria-live="polite" aria-busy="true" className="space-y-6">
+      <span className="sr-only">{etiqueta}…</span>
+      {variante === 'inicio' ? (
+        <>
+          <Esqueleto className="h-44 w-full rounded-xl" />
+          <div className="grid gap-4 sm:grid-cols-3" aria-hidden>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="space-y-3 rounded-lg border border-borde/70 bg-tarjeta p-5">
+                <Esqueleto className="h-3.5 w-24" />
+                <Esqueleto className="h-7 w-16" />
+                <Esqueleto className="h-3 w-3/4" />
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="space-y-2" aria-hidden>
+            <Esqueleto className="h-7 w-56" />
+            <Esqueleto className="h-3.5 w-80 max-w-full" />
+          </div>
+          {variante === 'formulario' ? (
+            <div className="grid gap-4 lg:grid-cols-2" aria-hidden>
+              {[0, 1].map((i) => (
+                <div key={i} className="space-y-4 rounded-lg border border-borde/70 bg-tarjeta p-5">
+                  <Esqueleto className="h-4 w-32" />
+                  <EsqueletoFormulario campos={i === 0 ? 4 : 2} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-borde/70 bg-tarjeta p-5" aria-hidden>
+              <EsqueletoTabla />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Esqueleto del panel completo (barra, menu y contenido) mientras se verifica
+ * la sesion. Reemplaza el spinner suelto en medio de una pantalla vacia.
+ */
+export function EsqueletoPanel() {
+  useActividadMientrasVisible();
+  return (
+    <div className="mica flex min-h-screen flex-col" role="status" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Verificando sesion…</span>
+      <div
+        className="flex h-12 shrink-0 items-center gap-3 border-b border-borde/60 px-3 sm:px-4"
+        aria-hidden
+      >
+        <Esqueleto className="h-6 w-6 rounded-md" />
+        <Esqueleto className="h-4 w-28" />
+        <Esqueleto className="ml-auto h-7 w-7 rounded-full" />
+      </div>
+      <div className="flex flex-1" aria-hidden>
+        <div className="hidden w-60 shrink-0 space-y-2 px-3 pt-4 lg:block">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <Esqueleto key={i} className="h-9 w-full" />
+          ))}
+        </div>
+        <div className="min-w-0 flex-1 bg-fondo/50 px-4 py-6 sm:px-6 lg:rounded-tl-lg lg:border-l lg:border-t lg:border-borde/60 lg:px-10 lg:py-8">
+          <div className="mx-auto max-w-6xl">
+            <CargandoSeccion variante="tabla" etiqueta="Verificando sesion" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

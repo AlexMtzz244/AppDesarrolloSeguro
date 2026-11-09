@@ -73,7 +73,7 @@ export default function PaginaAlertas() {
 
       <Panel titulo="Alertas de seguridad">
         {alertas.cargando ? (
-          <EstadoCargando />
+          <EstadoCargando variante="tabla" />
         ) : alertas.error ? (
           <EstadoError
             mensaje={alertas.error.message}

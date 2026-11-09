@@ -71,7 +71,7 @@ function SeccionDatos({ estado }: { readonly estado: ReturnType<typeof useRecurs
     if (estado.datos) setTelefono(estado.datos.telefono ?? '');
   }, [estado.datos]);
 
-  if (estado.cargando) return <Panel titulo="Datos"><EstadoCargando /></Panel>;
+  if (estado.cargando) return <Panel titulo="Datos"><EstadoCargando variante="formulario" /></Panel>;
   if (estado.error) {
     return (
       <Panel titulo="Datos">
@@ -367,7 +367,7 @@ function SeccionSesiones({ estado }: { readonly estado: ReturnType<typeof useRec
       descripcion="Si no reconoces alguna, revocala y cambia tu contrasena de inmediato."
     >
       {estado.cargando ? (
-        <EstadoCargando />
+        <EstadoCargando variante="tabla" columnas={3} filas={3} />
       ) : estado.error ? (
         <EstadoError
           mensaje={estado.error.message}

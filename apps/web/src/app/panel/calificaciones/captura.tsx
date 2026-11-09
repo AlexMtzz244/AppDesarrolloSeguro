@@ -80,7 +80,7 @@ export function CapturaProfesor() {
       descripcion="Captura en borrador, revisa y publica. Lo publicado ya no se edita aqui."
     >
       {grupos.cargando ? (
-        <EstadoCargando etiqueta="Cargando tus grupos" />
+        <EstadoCargando etiqueta="Cargando tus grupos" variante="tabla" columnas={3} filas={3} />
       ) : grupos.error ? (
         <EstadoError
           mensaje={grupos.error.message}
@@ -142,7 +142,7 @@ function ListaCaptura({ grupo }: { readonly grupo: GrupoAsignado }) {
     );
   }
 
-  if (lista.cargando) return <EstadoCargando etiqueta="Cargando lista de captura" />;
+  if (lista.cargando) return <EstadoCargando etiqueta="Cargando lista de captura" variante="tabla" columnas={4} />;
   if (lista.error) {
     return (
       <EstadoError mensaje={lista.error.message} correlationId={lista.error.correlationId} onReintentar={lista.recargar} />

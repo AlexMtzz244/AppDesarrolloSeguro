@@ -1,4 +1,5 @@
 import type { ErrorApi } from '@securecampus/contracts';
+import { iniciarActividad } from './actividad';
 
 /**
  * Cliente de la API.
@@ -67,12 +68,20 @@ export async function llamar<T>(ruta: string, opciones: OpcionesPeticion = {}): 
   }
   if (opciones.señal) init.signal = opciones.señal;
 
-  const respuesta = await fetch(`${BASE}/api${ruta}`, init);
+  // Una peticion cancelada (cambio de pantalla) tambien cuenta como terminada.
+  const terminarActividad = iniciarActividad();
+  let respuesta: Response;
+  let cuerpo: unknown;
+  try {
+    respuesta = await fetch(`${BASE}/api${ruta}`, init);
 
-  if (respuesta.status === 204) return undefined as T;
+    if (respuesta.status === 204) return undefined as T;
 
-  const texto = await respuesta.text();
-  const cuerpo: unknown = texto ? JSON.parse(texto) : null;
+    const texto = await respuesta.text();
+    cuerpo = texto ? JSON.parse(texto) : null;
+  } finally {
+    terminarActividad();
+  }
 
   if (!respuesta.ok) {
     const error = cuerpo as Partial<ErrorApi> | null;

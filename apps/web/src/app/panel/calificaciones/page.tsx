@@ -85,7 +85,7 @@ function MisCalificaciones() {
         descripcion="Una calificacion corregida despues de publicarse siempre genera un aviso a tu correo."
       >
         {mias.cargando ? (
-          <EstadoCargando />
+          <EstadoCargando variante="tabla" />
         ) : mias.error ? (
           <EstadoError
             mensaje={mias.error.message}

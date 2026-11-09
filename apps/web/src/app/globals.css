@@ -241,6 +241,18 @@
     opacity: 1;
   }
 
+  /* Barra superior de actividad: indeterminada, sobre todo el contenido. */
+  .barra-actividad {
+    @apply pointer-events-none fixed inset-x-0 top-0 z-[100] h-[3px] overflow-hidden bg-primario/15 opacity-0 transition-opacity duration-normal;
+  }
+  .barra-actividad[data-visible='true'] {
+    @apply opacity-100;
+  }
+  .barra-actividad::after {
+    content: '';
+    @apply absolute inset-y-0 left-0 w-2/5 animate-barrido rounded-full bg-primario;
+  }
+
   /* Esqueleto de carga con barrido. */
   .esqueleto {
     @apply relative overflow-hidden rounded-md bg-panel;

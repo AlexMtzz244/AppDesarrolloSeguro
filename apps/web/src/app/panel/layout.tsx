@@ -39,7 +39,7 @@ import type { Permiso } from '@securecampus/contracts';
 import { CURVA_DECELERAR } from '@/componentes/movimiento';
 import { useSesion } from '@/componentes/sesion';
 import { AlternadorTema } from '@/componentes/tema';
-import { BarraMensaje, EstadoCargando } from '@/componentes/ui';
+import { BarraMensaje, EsqueletoPanel } from '@/componentes/ui';
 import { Logotipo } from '@/componentes/marca';
 import { cn } from '@/lib/utilidades';
 
@@ -143,13 +143,7 @@ export default function LayoutPanel({ children }: { readonly children: React.Rea
     });
   }
 
-  if (cargando) {
-    return (
-      <div className="mica flex min-h-screen items-center justify-center">
-        <EstadoCargando etiqueta="Verificando sesion" />
-      </div>
-    );
-  }
+  if (cargando) return <EsqueletoPanel />;
 
   if (!actor) return null;
 

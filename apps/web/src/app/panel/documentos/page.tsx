@@ -107,7 +107,7 @@ export default function PaginaDocumentos() {
         descripcion="Un documento solo se entrega despues de que el antivirus lo marca como limpio."
       >
         {documentos.cargando ? (
-          <EstadoCargando />
+          <EstadoCargando variante="tabla" />
         ) : documentos.error ? (
           <EstadoError
             mensaje={documentos.error.message}
@@ -210,7 +210,7 @@ function FormularioCarga({ alTerminar }: { readonly alTerminar: () => void }) {
   return (
     <Panel titulo="Subir documento" descripcion="Pasa por cuarentena y antivirus antes de poder descargarse.">
       {tipos.cargando ? (
-        <EstadoCargando />
+        <EstadoCargando variante="formulario" />
       ) : tipos.error ? (
         <EstadoError mensaje={tipos.error.message} onReintentar={tipos.recargar} />
       ) : !tipos.datos?.length ? (

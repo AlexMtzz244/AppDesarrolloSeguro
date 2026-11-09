@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
+import { BarraActividad } from '@/componentes/barra-actividad';
 import { ProveedorMovimiento } from '@/componentes/movimiento';
 import { ProveedorSesion } from '@/componentes/sesion';
 import { SCRIPT_TEMA } from '@/componentes/tema';
@@ -35,6 +36,7 @@ export default async function LayoutRaiz({ children }: { children: React.ReactNo
         <a href="#contenido" className="salto-contenido">
           Saltar al contenido principal
         </a>
+        <BarraActividad />
         <ProveedorMovimiento>
           <ProveedorSesion>{children}</ProveedorSesion>
         </ProveedorMovimiento>

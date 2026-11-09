@@ -110,7 +110,7 @@ export default function PaginaPeriodos() {
 
       <Panel titulo="Listado">
         {periodos.cargando ? (
-          <EstadoCargando />
+          <EstadoCargando variante="tabla" />
         ) : periodos.error ? (
           <EstadoError
             mensaje={periodos.error.message}

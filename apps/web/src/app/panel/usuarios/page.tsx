@@ -89,7 +89,7 @@ export default function PaginaUsuarios() {
 
       <Panel titulo="Cuentas" descripcion={usuarios.datos ? `${usuarios.datos.total} en total` : undefined}>
         {usuarios.cargando ? (
-          <EstadoCargando />
+          <EstadoCargando variante="tabla" />
         ) : usuarios.error ? (
           <EstadoError
             mensaje={usuarios.error.message}

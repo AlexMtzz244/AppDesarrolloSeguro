@@ -145,7 +145,7 @@ function MisSolicitudes() {
         }
       >
         {mias.cargando ? (
-          <EstadoCargando />
+          <EstadoCargando variante="tabla" />
         ) : mias.error ? (
           <EstadoError mensaje={mias.error.message} correlationId={mias.error.correlationId} onReintentar={mias.recargar} />
         ) : !mias.datos?.length ? (

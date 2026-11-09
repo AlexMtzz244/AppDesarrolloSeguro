@@ -61,7 +61,7 @@ export default function PaginaDecisiones() {
       />
 
       {decisiones.cargando ? (
-        <EstadoCargando etiqueta="Consultando estado de aprobación" />
+        <EstadoCargando etiqueta="Consultando estado de aprobación" variante="tabla" />
       ) : decisiones.error ? (
         <EstadoError
           mensaje={decisiones.error.message}

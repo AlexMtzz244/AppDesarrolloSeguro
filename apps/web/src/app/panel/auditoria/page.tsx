@@ -131,7 +131,7 @@ export default function PaginaAuditoria() {
 
       <Panel titulo="Eventos" descripcion={eventos.datos ? `${eventos.datos.total} registros` : undefined}>
         {eventos.cargando ? (
-          <EstadoCargando />
+          <EstadoCargando variante="tabla" />
         ) : eventos.error ? (
           <EstadoError
             mensaje={eventos.error.message}

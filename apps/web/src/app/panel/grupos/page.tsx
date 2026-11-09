@@ -69,7 +69,7 @@ export default function PaginaGrupos() {
 
       <Panel titulo="Listado">
         {grupos.cargando ? (
-          <EstadoCargando />
+          <EstadoCargando variante="tabla" />
         ) : grupos.error ? (
           <EstadoError
             mensaje={grupos.error.message}
