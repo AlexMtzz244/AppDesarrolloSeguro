@@ -157,6 +157,93 @@ services:
     depends_on:
       - api
 
+  # --- Perfil `endurecido` (SC-LAB-008, Paso 8) ---------------------------------
+  #
+  # Mismas piezas que `api` y `web`, pero con la imagen de PRODUCCION y los
+  # controles de contenedor que pide el laboratorio:
+  #
+  #   user node            no corre como administrador (la imagen ya trae USER node)
+  #   read_only            sistema de archivos raiz de solo lectura
+  #   cap_drop: ALL        sin capacidades de Linux; no hace falta ninguna
+  #   no-new-privileges    un binario setuid no puede elevar privilegios
+  #   tmpfs                unico lugar escribible, en memoria y sin persistir
+  #   127.0.0.1:puerto     solo accesible desde la propia maquina
+  #
+  # Sin montajes del codigo: lo que corre es lo que se construyo. Los servicios
+  # de arriba (`api`, `web`) son de desarrollo y no llevan estos controles
+  # porque necesitan escribir sobre el codigo montado.
+  #
+  # Uso (no arranca por defecto):
+  #   docker compose --profile endurecido up --build -d api-endurecido web-endurecido
+  #
+  # La imagen de produccion se niega a arrancar sin HTTPS: exige cookie Secure y
+  # origenes https:// (RNFS-012, RNFS-051). Define en .env los dos valores, que
+  # apuntan a un proxy TLS delante de los contenedores:
+  #   ORIGEN_WEB_ENDURECIDO=https://campus.ejemplo.mx
+  #   URL_API_ENDURECIDA=https://api.campus.ejemplo.mx
+  # Al ser la imagen de produccion, tambien aplican las demas reglas de
+  # `validarCoherencia` (apps/api/src/config/entorno.ts): PERMITIR_DATOS_SEMILLA
+  # en false y un CAPTCHA_PROVEEDOR real. Si faltan, el valor por omision usa el TLD reservado `.invalid`: el perfil
+  # no funciona a medias, falla de forma evidente. (Un `:?` obligatorio no sirve
+  # aqui: Compose interpola todo el archivo aunque el perfil no este activo y
+  # rompería el `docker compose up` de desarrollo.)
+  api-endurecido:
+    profiles: ["endurecido"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: produccion
+    restart: unless-stopped
+    user: "node"
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp"]
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PERMITIR_DATOS_SEMILLA: "false"
+      DATABASE_URL: postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      CLAMAV_HOST: clamav
+      SMTP_HOST: mailpit
+      SESION_COOKIE_SECURE: "true"
+      CORS_ORIGENES_PERMITIDOS: ${ORIGEN_WEB_ENDURECIDO:-https://definir-origen-web.invalid}
+    ports:
+      - "127.0.0.1:${API_PUERTO:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  web-endurecido:
+    profiles: ["endurecido"]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: produccion
+      # NEXT_PUBLIC_* se incrusta al compilar, no se lee al arrancar.
+      args:
+        NEXT_PUBLIC_API_URL: ${URL_API_ENDURECIDA:-https://definir-url-api.invalid}
+    restart: unless-stopped
+    user: "node"
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    # `next start` escribe su cache de imagenes y de renderizado en .next/cache.
+    tmpfs: ["/tmp", "/app/apps/web/.next/cache"]
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:${WEB_PUERTO:-3000}:3000"
+    depends_on:
+      - api-endurecido
+
 volumes:
   postgres_datos:
   redis_datos:
