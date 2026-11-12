@@ -35,6 +35,13 @@ description = "Credenciales efimeras de los services de CI"
 regexTarget = "match"
 regexes = ['''^postgres(ql)?://securecampus_(owner:postgres_ci|app:postgres_ci_app)@$''']
 
+# Interpolacion de Compose: `${VAR}:${VAR}@` no contiene ningun valor, solo los
+# nombres de variables que se resuelven desde .env (que no se versiona).
+[[rules.allowlists]]
+description = "URL de Postgres con variables de Compose, sin valores"
+regexTarget = "match"
+regexes = ['''^postgres(ql)?://\$\{[A-Z_]+\}:\$\{[A-Z_]+\}@$''']
+
 # --- Exclusiones -----------------------------------------------------------
 
 [allowlist]
