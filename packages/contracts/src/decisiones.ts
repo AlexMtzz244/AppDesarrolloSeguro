@@ -163,6 +163,7 @@ export const CATALOGO_DECISIONES: Readonly<Record<IdDecision, Decision>> = {
 
 /** Las que impiden arrancar en producción mientras no tengan firma. */
 export const DECISIONES_BLOQUEANTES: readonly IdDecision[] = DECISIONES.filter(
+  // eslint-disable-next-line security/detect-object-injection -- `id` recorre la constante DECISIONES, que es una lista fija.
   (id) => CATALOGO_DECISIONES[id].bloqueaProduccion,
 );
 

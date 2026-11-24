@@ -126,9 +126,11 @@ export class FiltroExcepciones implements ExceptionFilter {
     };
 
     const mensaje = this.esProduccion
+      // eslint-disable-next-line security/detect-object-injection -- `estado` es el codigo HTTP numerico de la excepcion, no un dato del cliente.
       ? (genericos[estado] ?? 'Ocurrio un error al procesar la solicitud.')
       : typeof cuerpo === 'object' && cuerpo !== null && 'message' in cuerpo
         ? String((cuerpo as { message: unknown }).message)
+        // eslint-disable-next-line security/detect-object-injection -- `estado` es el codigo HTTP numerico de la excepcion, no un dato del cliente.
         : (genericos[estado] ?? 'Error');
 
     return { codigo: `HTTP_${estado}`, mensaje };

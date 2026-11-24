@@ -68,6 +68,7 @@ export class UsuariosService {
         id: u.idPublico,
         correo: u.correo,
         activo: u.activo,
+        // eslint-disable-next-line security/detect-object-injection -- `i` es el indice numerico de `map` sobre un arreglo propio.
         bloqueadoPorIntentos: bloqueos[i] ?? false,
         nombre: u.perfil ? `${u.perfil.nombre} ${u.perfil.apellidoPaterno}` : null,
         matricula: u.perfil?.matricula ?? null,

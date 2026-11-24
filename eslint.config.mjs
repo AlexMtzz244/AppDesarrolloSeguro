@@ -4,6 +4,7 @@
 // etapa de calidad quedaba roja sin verificar nada.
 import js from '@eslint/js';
 import reactHooks from 'eslint-plugin-react-hooks';
+import security from 'eslint-plugin-security';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -12,6 +13,17 @@ export default tseslint.config(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    // SC-LAB-009: las reglas de seguridad NO se activan aqui, viven en
+    // `eslint.seguridad.config.mjs` (`pnpm sast`). Se registra el plugin solo
+    // para que las directivas `eslint-disable security/...` del codigo, que
+    // justifican cada falso positivo, no se lean como reglas inexistentes. Por
+    // la misma razon se desactiva el aviso de directivas sin efecto: aqui las
+    // reglas de seguridad estan apagadas, asi que parecerian sobrantes. Ese
+    // control si esta activo, y en `error`, en el analisis de seguridad.
+    plugins: { security },
+    linterOptions: { reportUnusedDisableDirectives: 'off' },
+  },
   {
     // Solo las dos reglas clasicas de hooks; el preset completo de la v7 trae
     // las reglas del React Compiler, que este proyecto no usa.

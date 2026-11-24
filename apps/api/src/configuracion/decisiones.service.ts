@@ -46,6 +46,7 @@ export class DecisionesService implements OnApplicationBootstrap {
     if (pendientes.length === 0) return;
 
     const detalle = pendientes
+      // eslint-disable-next-line security/detect-object-injection -- `id` recorre las decisiones bloqueantes del catalogo, una lista fija.
       .map((id) => `  - ${id}: ${CATALOGO_DECISIONES[id].titulo}\n      aprueba: ${CATALOGO_DECISIONES[id].apruebaArea}`)
       .join('\n');
 
@@ -126,6 +127,7 @@ export class DecisionesService implements OnApplicationBootstrap {
    * corresponde.
    */
   async aprobar(actor: Actor, id: IdDecision, aprobadoPor: string, motivo: string) {
+    // eslint-disable-next-line security/detect-object-injection -- `id` es un IdDecision del catalogo; el controlador lo valida contra la lista permitida antes de llegar aqui.
     const decision = CATALOGO_DECISIONES[id];
 
     return this.prisma.$transaction(async (tx) => {

@@ -35,10 +35,13 @@ export class ZodValidacionPipe<T> implements PipeTransform<unknown, T> {
   }
 }
 
-function agruparPorCampo(error: ZodError): Record<string, string[]> {
-  const campos: Record<string, string[]> = {};
+export function agruparPorCampo(error: ZodError): Record<string, string[]> {
+  // Sin prototipo: una clave como `constructor` o `__proto__` ya "existe" en un
+  // `{}` normal y `??=` no crearia el arreglo (SC-LAB-009, hallazgo de SAST).
+  const campos: Record<string, string[]> = Object.create(null) as Record<string, string[]>;
   for (const issue of error.issues) {
     const clave = issue.path.join('.') || '_';
+    // eslint-disable-next-line security/detect-object-injection -- `campos` no tiene prototipo: la clave solo puede ser dato.
     (campos[clave] ??= []).push(issue.message);
   }
   return campos;
