@@ -1,5 +1,6 @@
 # Copia del workflow del ZIP de SC-LAB-009 (labs-docente/SC-LAB-009/.github/workflows/security.yml).
 # Cambios: (1) los comandos corren dentro de labs-docente/SC-LAB-009, porque GitHub solo lee la raíz;
+# (3) se pide `version: latest` de Trivy porque el binario que fija la acción (v0.65.0) no se instaló ("Install Trivy" salió con código 1);
 # (2) la acción de Trivy se llama @v0.33.1 porque el ZIP usa @0.33.1 y GitHub responde "unable to find version 0.33.1".
 # Se dispara solo al empujar a esta rama, para no añadir un job rojo/lento a main sin decidirlo.
 name: SC-LAB-009 | Controles DevSecOps (material del docente)
@@ -51,6 +52,7 @@ jobs:
       - name: Escanear imagen con Trivy
         uses: aquasecurity/trivy-action@v0.33.1
         with:
+          version: 'latest'
           image-ref: 'securecampus:lab009'
           format: 'table'
           vuln-type: 'os,library'
