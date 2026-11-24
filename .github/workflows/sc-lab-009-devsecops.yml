@@ -1,0 +1,111 @@
+name: "SC-LAB-009 | Controles DevSecOps"
+
+# SC-LAB-009 pide un pipeline con dos trabajos: uno de analisis (pruebas, SAST,
+# dependencias) y otro de contenedor (construir la imagen y escanearla con
+# Trivy). Aqui el orden es el mismo, sobre SecureCampus en TypeScript:
+#
+#   pytest      -> `pnpm test` y `pnpm test:int`   (ci.yml, jobs calidad e integracion)
+#   Bandit      -> `pnpm sast`                     (este archivo, job sast)
+#   pip-audit   -> `pnpm audit --prod`             (ci.yml, job dependencias)
+#   Trivy       -> escaneo de imagenes             (este archivo, job contenedor)
+#
+# Las pruebas y la auditoria de dependencias ya corrian en ci.yml: duplicarlas
+# aqui solo daria dos fuentes de verdad. Este workflow agrega lo que faltaba.
+
+on:
+  push:
+    branches: [main]
+  # Sin filtro de rama base: este trabajo tambien debe correr en PR apilados
+  # (por ejemplo, el de SC-LAB-009 sobre el de SC-LAB-007/008).
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sc-lab-009-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sast:
+    name: SAST (eslint-plugin-security)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Todo hallazgo es error: se corrige o se justifica en el codigo con
+      # `eslint-disable-next-line ... -- motivo`. Ver eslint.seguridad.config.mjs.
+      - run: pnpm sast
+
+  contenedor:
+    name: Imagen ${{ matrix.imagen }} y Trivy
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        imagen: [api, web]
+    env:
+      # Trivy se ejecuta desde su imagen fijada por digest (version 0.76.2 al
+      # escribir esto), no por etiqueta: una etiqueta movil es una dependencia
+      # de cadena de suministro sin versionar dentro del propio escaner.
+      TRIVY_IMAGEN: aquasec/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Construir bien NO prueba que la imagen este libre de vulnerabilidades,
+      # pero construir mal si prueba algo: hasta SC-LAB-009 estos Dockerfile no
+      # llegaban a construirse (ver docs/security/SC-LAB-009-integracion-securecampus.md
+      # en proyDesSeguro).
+      - name: Construir la imagen de produccion
+        run: |
+          docker build \
+            --target produccion \
+            --build-arg NEXT_PUBLIC_API_URL=https://api.campus.ejemplo.mx \
+            -f apps/${{ matrix.imagen }}/Dockerfile \
+            -t securecampus-${{ matrix.imagen }}:ci .
+
+      - name: Usuario con el que corre la imagen
+        run: |
+          usuario=$(docker run --rm --entrypoint id securecampus-${{ matrix.imagen }}:ci -un)
+          echo "Usuario del contenedor: $usuario"
+          test "$usuario" = "node"
+
+      # Informe completo y sin bloquear: incluye lo que NO tiene correccion
+      # publicada (paquetes del sistema operativo de la imagen base). Sirve para
+      # leerlo y decidir, no para pasar o fallar.
+      - name: Trivy, informe completo (no bloquea)
+        run: |
+          mkdir -p "$RUNNER_TEMP/trivy" informes
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$RUNNER_TEMP/trivy:/root/.cache/trivy" \
+            "$TRIVY_IMAGEN" image \
+              --severity HIGH,CRITICAL --scanners vuln --exit-code 0 \
+              securecampus-${{ matrix.imagen }}:ci | tee informes/trivy-${{ matrix.imagen }}-completo.txt
+
+      # La compuerta: una vulnerabilidad ALTA o CRITICA con correccion publicada
+      # detiene el trabajo (exit-code: 1 en el laboratorio). Las que no tienen
+      # correccion no se pueden resolver actualizando; quedan en el informe.
+      - name: Trivy, compuerta (alta o critica con correccion)
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$RUNNER_TEMP/trivy:/root/.cache/trivy" \
+            "$TRIVY_IMAGEN" image \
+              --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln --exit-code 1 \
+              securecampus-${{ matrix.imagen }}:ci | tee informes/trivy-${{ matrix.imagen }}-compuerta.txt
+        # `tee` oculta el codigo de salida de Trivy; bash con pipefail lo conserva.
+        shell: bash
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: trivy-${{ matrix.imagen }}
+          path: informes/
+          retention-days: 30

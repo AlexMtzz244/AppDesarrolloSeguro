@@ -384,9 +384,11 @@ export function BarraMensaje({
 }: VariantProps<typeof variantesMensaje> &
   React.HTMLAttributes<HTMLDivElement> & { readonly children: React.ReactNode }) {
   const clave = tono ?? 'info';
+  // eslint-disable-next-line security/detect-object-injection -- `clave` es una variante tipada del componente (union de literales), no entrada del usuario.
   const Icono = ICONOS_MENSAJE[clave];
   return (
     <div className={cn(variantesMensaje({ tono }), className)} {...props}>
+      {/* eslint-disable-next-line security/detect-object-injection -- `clave` es una variante tipada del componente (union de literales), no entrada del usuario. */}
       <Icono className={cn('mt-px h-5 w-5 shrink-0', COLOR_ICONO[clave])} aria-hidden />
       <div className="min-w-0 flex-1">{children}</div>
     </div>
@@ -579,8 +581,10 @@ export function Insignia({
       <span className="relative flex h-1.5 w-1.5" aria-hidden>
         {/* Lo que exige atencion late; lo demas se queda quieto. */}
         {clave === 'peligro' ? (
+          // eslint-disable-next-line security/detect-object-injection -- `clave` es una variante tipada del componente (union de literales), no entrada del usuario.
           <span className={cn('absolute inset-0 animate-latido rounded-full', PUNTO_INSIGNIA[clave])} />
         ) : null}
+        {/* eslint-disable-next-line security/detect-object-injection -- `clave` es una variante tipada del componente (union de literales), no entrada del usuario. */}
         <span className={cn('relative h-1.5 w-1.5 rounded-full', PUNTO_INSIGNIA[clave])} />
       </span>
       {children}

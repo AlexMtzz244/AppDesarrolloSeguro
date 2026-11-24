@@ -36,6 +36,7 @@ export function transicionPermitida(
   desde: EstadoCalificacion,
   hacia: EstadoCalificacion,
 ): boolean {
+  // eslint-disable-next-line security/detect-object-injection -- `desde` es un EstadoCalificacion: viene de la columna enum de la base, no del cliente.
   return TRANSICIONES_CALIFICACION[desde].includes(hacia);
 }
 

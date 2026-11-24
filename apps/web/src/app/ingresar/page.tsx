@@ -219,9 +219,10 @@ export default function PaginaIngresar() {
 }
 
 function agrupar(issues: { path: (string | number)[]; message: string }[]) {
-  const campos: Record<string, string[]> = {};
+  const campos: Record<string, string[]> = Object.create(null) as Record<string, string[]>;
   for (const issue of issues) {
     const clave = issue.path.join('.') || '_';
+    // eslint-disable-next-line security/detect-object-injection -- `campos` no tiene prototipo: la clave solo puede ser dato.
     (campos[clave] ??= []).push(issue.message);
   }
   return campos;

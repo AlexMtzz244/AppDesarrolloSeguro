@@ -120,17 +120,22 @@ const CLAVES_PROHIBIDAS = [
   'cookie',
 ];
 
-function sanear(valor: unknown): object | null {
+export function sanear(valor: unknown): object | null {
   if (valor === undefined || valor === null) return null;
   if (typeof valor !== 'object') return { valor };
 
-  const salida: Record<string, unknown> = {};
+  // Sin prototipo: con un `{}` normal, la clave `__proto__` cambiaria el
+  // prototipo de la copia en lugar de crear una propiedad, y esa clave
+  // desapareceria del registro de auditoria (SC-LAB-009, hallazgo de SAST).
+  const salida: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   for (const [clave, contenido] of Object.entries(valor as Record<string, unknown>)) {
     const normalizada = clave.toLowerCase().replace(/[_-]/g, '');
     if (CLAVES_PROHIBIDAS.some((p) => normalizada.includes(p))) {
+      // eslint-disable-next-line security/detect-object-injection -- `salida` no tiene prototipo: la clave solo puede ser dato.
       salida[clave] = '[omitido]';
       continue;
     }
+    // eslint-disable-next-line security/detect-object-injection -- `salida` no tiene prototipo: la clave solo puede ser dato.
     salida[clave] =
       contenido && typeof contenido === 'object' && !(contenido instanceof Date)
         ? sanear(contenido)

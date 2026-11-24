@@ -242,6 +242,7 @@ function ListaCaptura({ grupo }: { readonly grupo: GrupoAsignado }) {
         <tbody>
           {filas.map((fila) => {
             const id = fila.estudiante.id;
+            // eslint-disable-next-line security/detect-object-injection -- `id` es el identificador publico (ULID) que genera el servidor, no texto del usuario.
             const texto = valores[id] ?? '';
             const invalido = editable(fila) && texto.trim() !== '' && !valorValido(texto);
             return (

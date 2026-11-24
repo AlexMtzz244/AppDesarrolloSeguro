@@ -233,6 +233,7 @@ function FormularioCarga({ alTerminar }: { readonly alTerminar: () => void }) {
             etiqueta="Archivo"
             ayuda={
               elegido
+                // eslint-disable-next-line security/detect-object-injection -- `m` sale de la lista de tipos MIME permitidos que define el servidor; si no esta, se usa el propio valor.
                 ? `${elegido.mimesPermitidos.map((m) => EXTENSIONES[m] ?? m).join(', ')} · maximo ${bytes(elegido.tamanoMaximoBytes)}`
                 : undefined
             }

@@ -10,7 +10,14 @@
  * `multipleOf(0.01)` de Zod deja pasar `1e-7`.
  */
 
+// SC-LAB-009: `security/detect-unsafe-regex` marca estas dos por el grupo opcional
+// con cuantificador anidado. Es un falso positivo: el grupo empieza por un `.`
+// literal que los digitos anteriores no pueden consumir, asi que no hay dos
+// formas de repartir la entrada y el motor no retrocede de forma exponencial. Se
+// midio: ver validadores.regex.spec.ts (entrada de 200 000 caracteres).
+// eslint-disable-next-line security/detect-unsafe-regex -- sin ambiguedad entre `\d+` y el grupo `(\.\d{1,2})?`.
 const FORMATO_DECIMAL = /^\d+(\.\d{1,2})?$/;
+// eslint-disable-next-line security/detect-unsafe-regex -- igual que arriba; ademas `\d{1,3}` esta acotado.
 const FORMATO_TEXTO = /^\d{1,3}(\.\d{1,2})?$/;
 
 /**
