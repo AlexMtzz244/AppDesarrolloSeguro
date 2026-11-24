@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AcademicoModule } from './academico/academico.module.js';
 import { AlertasModule } from './alertas/alertas.module.js';
 import { AuditoriaModule } from './auditoria/auditoria.module.js';
+import { OrigenGuard } from './autorizacion/origen.guard.js';
 import { PoliticaGuard } from './autorizacion/politica.guard.js';
 import { CalificacionesModule } from './calificaciones/calificaciones.module.js';
 import { ComunModule } from './comun/comun.module.js';
@@ -43,6 +44,12 @@ import { UsuariosModule } from './usuarios/usuarios.module.js';
     SolicitudesModule,
     AlertasModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: PoliticaGuard }],
+  // El orden importa: Nest ejecuta los APP_GUARD en el orden en que se
+  // declaran. El origen se verifica primero, antes de gastar una consulta en
+  // resolver la sesion de una peticion que de todos modos se va a rechazar.
+  providers: [
+    { provide: APP_GUARD, useClass: OrigenGuard },
+    { provide: APP_GUARD, useClass: PoliticaGuard },
+  ],
 })
 export class AppModule {}

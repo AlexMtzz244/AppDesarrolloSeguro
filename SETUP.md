@@ -313,6 +313,37 @@ Hasta que aparezca `healthy`, la cuarentena de documentos no puede operar.
 
 ---
 
+## Contenedores endurecidos y casos HTTP (SC-LAB-007 y SC-LAB-008)
+
+Los servicios `api` y `web` del compose son de **desarrollo**: corren como
+root y montan el código del host, porque necesitan escribir sobre él. Para ver
+la aplicación con los controles de contenedor del laboratorio 8 existe el perfil
+`endurecido`, que no arranca por defecto:
+
+```bash
+docker compose --profile endurecido up --build -d api-endurecido web-endurecido
+```
+
+Usa la imagen de producción con usuario `node`, raíz de solo lectura,
+`cap_drop: ALL`, `no-new-privileges`, `/tmp` en memoria y puertos solo en
+`127.0.0.1`. Como es la imagen de producción, **se niega a arrancar sin HTTPS**:
+define en `.env` `ORIGEN_WEB_ENDURECIDO` y `URL_API_ENDURECIDA` con direcciones
+`https://` detrás de un proxy TLS, y un `CAPTCHA_PROVEEDOR` real. La
+configuración está verificada con `docker compose config` y por
+`apps/api/src/config/contenedores.spec.ts`; el arranque del contenedor no se ha
+ejecutado en el entorno donde se escribió.
+
+Para repetir las experiencias del laboratorio 7 contra la API real (200, 400,
+401, 403 y las peticiones desde otro origen), con la API levantada y
+`SESION_COOKIE_SECURE=false` (solo HTTP local):
+
+```bash
+pnpm db:seed
+pnpm --filter api lab:casos-http
+```
+
+---
+
 ## Empezar de nuevo
 
 ```powershell

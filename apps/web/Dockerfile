@@ -17,6 +17,10 @@ EXPOSE 3000
 CMD ["pnpm", "--filter", "web", "dev"]
 
 FROM base AS construccion
+# NEXT_PUBLIC_* se incrusta en el JavaScript del navegador al compilar: si no se
+# recibe aqui, la imagen de produccion apuntaria a localhost:3001.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/contracts/package.json ./packages/contracts/

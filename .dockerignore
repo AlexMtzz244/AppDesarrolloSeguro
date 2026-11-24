@@ -1,0 +1,34 @@
+# Lo que NO debe entrar al contexto de build (SC-LAB-008, Paso 12: "base de datos
+# dentro de la imagen"). Los Dockerfile hacen `COPY . .`; sin este archivo viajan
+# a las capas de la imagen el `.env` con los secretos, el historial de git y las
+# bases locales, y quien tenga la imagen los puede extraer con `docker history`
+# o montandola.
+
+# Secretos: el unico archivo de entorno que se versiona es la plantilla.
+.env
+.env.*
+!.env.example
+
+# Historial y metadatos del repositorio
+.git
+.github
+.husky
+
+# Dependencias y artefactos: la imagen los reconstruye con su propio pnpm install
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/*.tsbuildinfo
+coverage
+**/test-results
+**/playwright-report
+
+# Datos locales y evidencia que no es codigo
+*.db
+*.db-journal
+*.sqlite
+*.log
+sbom.json
+sbom.xml
+docs
