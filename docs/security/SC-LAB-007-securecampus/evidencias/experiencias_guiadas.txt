@@ -1,0 +1,19 @@
+OK  0 GET 3/10 sin sesion | esperado 401 | obtenido 401 | HTTP 401 { "error": "Autenticación requerida" }
+-- Sesión: profe_ana
+OK  A3 Ana GET 3/10 | esperado 200 | obtenido 200 | HTTP 200 { "grade": "85", "group_id": 10, "student_id": 3 }
+OK  A4 Ana GET 4/20 | esperado 403 | obtenido 403 | HTTP 403 { "error": "Acceso denegado" }
+OK  B2 Ana PUT 3/10 = 88.50 | esperado 200 | obtenido 200 | HTTP 200 { "grade": "88.50", "message": "Calificación guardada" }
+OK  B3 Ana GET 3/10 (valor nuevo) | esperado 200 | obtenido 200 | HTTP 200 { "grade": "88.50", "group_id": 10, "student_id": 3 }
+OK  B4 Ana PUT 4/20 | esperado 403 | obtenido 403 | HTTP 403 { "error": "Acceso denegado" }
+OK  B5 Ana PUT 3/10 = 150 | esperado 400 | obtenido 400 | HTTP 400 { "error": "Calificación inválida" }
+-- logout: Sin sesión
+-- Sesión: alumna_eli
+OK  C3 Eli GET 3/10 | esperado 200 | obtenido 200 | HTTP 200 { "grade": "88.50", "group_id": 10, "student_id": 3 }
+OK  C4 Eli GET 4/20 | esperado 403 | obtenido 403 | HTTP 403 { "error": "Acceso denegado" }
+OK  C5 Eli PUT 3/10 | esperado 403 | obtenido 403 | HTTP 403 { "error": "Acceso denegado" }
+OK  D1 Eli GraphQL 3/10 | esperado 200 | obtenido 200 | HTTP 200 { "data": { "grade": { "grade": "88.50", "groupId": 10, "studentId": 3 } } }
+OK  D2 Eli GraphQL 4/20 | esperado 403 | obtenido 403 | HTTP 403 { "errors": [ { "message": "Acceso denegado" } ] }
+OK  D3 Eli GraphQL solo grade | esperado 200 | obtenido 200 | HTTP 200 { "data": { "grade": { "grade": "88.50" } } }
+
+Errores de pagina: 0
+Todos los casos coinciden con la guia

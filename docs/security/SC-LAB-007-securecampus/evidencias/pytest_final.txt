@@ -1,0 +1,27 @@
+$ python -m pytest -v
+============================= test session starts =============================
+platform win32
+rootdir: SC-LAB-007-securecampus
+plugins: platformdirs-4.14.8
+collecting ... collected 18 items
+
+tests/test_lab007.py::test_graphql_autorizado PASSED                     [  5%]
+tests/test_lab007.py::test_graphql_denegado PASSED                       [ 11%]
+tests/test_lab007.py::test_profesor_estudiante_no_inscrito PASSED        [ 16%]
+tests/test_security.py::test_grade_invalid[150] PASSED                   [ 22%]
+tests/test_security.py::test_grade_invalid[-1] PASSED                    [ 27%]
+tests/test_security.py::test_grade_invalid[hola] PASSED                  [ 33%]
+tests/test_security.py::test_grade_invalid[] PASSED                      [ 38%]
+tests/test_security.py::test_grade_invalid[NaN] PASSED                   [ 44%]
+tests/test_security.py::test_grade_invalid[Infinity] PASSED              [ 50%]
+tests/test_security.py::test_grade_invalid[None] PASSED                  [ 55%]
+tests/test_security.py::test_grade_invalid[99.999] PASSED                [ 61%]
+tests/test_security.py::test_professor_own_group PASSED                  [ 66%]
+tests/test_security.py::test_professor_other_group_forbidden PASSED      [ 72%]
+tests/test_security.py::test_student_cannot_modify PASSED                [ 77%]
+tests/test_security.py::test_student_cannot_read_other_student PASSED    [ 83%]
+tests/test_security.py::test_csrf_required PASSED                        [ 88%]
+tests/test_security.py::test_logout_revokes PASSED                       [ 94%]
+tests/test_security.py::test_outbox_transaction PASSED                   [100%]
+
+============================= 18 passed in 15.03s =============================

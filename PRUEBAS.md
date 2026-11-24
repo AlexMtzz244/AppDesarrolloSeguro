@@ -150,6 +150,10 @@ datos, equivalentes a `validators.py` y `permissions.py` del laboratorio):
 Resultado esperado: `packages/contracts` 79 pasan · `apps/api` 51 pasan ·
 `apps/web` no tiene unitarias.
 
+El explorador REST y GraphQL de **SC-LAB-007** (Flask, independiente de la app)
+tiene sus propias 18 pruebas de pytest; se ejecutan como indica
+[su README](docs/security/SC-LAB-007-securecampus/README.md).
+
 ### Nivel 3 — integración (las 13 negativas)
 
 Corren contra el Postgres y el Redis reales, no contra imitaciones. Por eso
