@@ -15,8 +15,9 @@ name: "SC-LAB-009 | Controles DevSecOps"
 on:
   push:
     branches: [main]
+  # Sin filtro de rama base: este trabajo tambien debe correr en PR apilados
+  # (por ejemplo, el de SC-LAB-009 sobre el de SC-LAB-007/008).
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
