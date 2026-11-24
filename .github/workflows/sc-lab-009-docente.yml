@@ -1,5 +1,6 @@
 # Copia del workflow del ZIP de SC-LAB-009 (labs-docente/SC-LAB-009/.github/workflows/security.yml).
-# Único cambio: los comandos corren dentro de labs-docente/SC-LAB-009, porque GitHub solo lee la raíz.
+# Cambios: (1) los comandos corren dentro de labs-docente/SC-LAB-009, porque GitHub solo lee la raíz;
+# (2) la acción de Trivy se llama @v0.33.1 porque el ZIP usa @0.33.1 y GitHub responde "unable to find version 0.33.1".
 # Se dispara solo al empujar a esta rama, para no añadir un job rojo/lento a main sin decidirlo.
 name: SC-LAB-009 | Controles DevSecOps (material del docente)
 
@@ -48,7 +49,7 @@ jobs:
       - name: Construir imagen de laboratorio
         run: docker build -t securecampus:lab009 labs-docente/SC-LAB-009
       - name: Escanear imagen con Trivy
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: 'securecampus:lab009'
           format: 'table'
